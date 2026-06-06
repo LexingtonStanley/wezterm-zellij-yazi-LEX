@@ -41,11 +41,17 @@ if (Get-Module -ListAvailable -Name PSFzf -ErrorAction SilentlyContinue) {
 # rest of a previous command appears greyed out - press Right/End to accept.
 # Needs PSReadLine 2.1+ (ships with Windows 10+ / PowerShell 7); guarded so an
 # older host just skips it instead of erroring.
-try {
-  Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
+# Gate on the module VERSION (not a runtime probe): -PredictionSource arrived in
+# PSReadLine 2.1, so 5.1's in-box 2.0 cleanly skips the whole block. Each option
+# is set independently so a no-op (e.g. PredictionSource is inert until a real
+# interactive console attaches) can't abort the colour/view-style that follow.
+$_prl = Get-Module PSReadLine
+if (-not $_prl) { Import-Module PSReadLine -ErrorAction SilentlyContinue; $_prl = Get-Module PSReadLine }
+if ($_prl -and $_prl.Version -ge [version]"2.1.0") {
+  try { Set-PSReadLineOption -PredictionSource History } catch {}
   try { Set-PSReadLineOption -PredictionViewStyle InlineView } catch {}
   try { Set-PSReadLineOption -Colors @{ InlinePrediction = "#2b6b60" } } catch {}  # dim teal, matches ble.sh
-} catch {}
+}
 
 # -- listings: eza with icons + git (ll / la / lt), else fall back to dir ----
 if (_have eza) {
