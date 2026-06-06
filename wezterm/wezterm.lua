@@ -10,30 +10,46 @@ local config = wezterm.config_builder and wezterm.config_builder() or {}
 
 ------------------------------------------------------------------------
 -- PLATFORM DETECTION
--- One config for Linux / macOS / Windows. On Windows, WezTerm runs natively
--- but boots straight into WSL — that's where the Linux stack (zellij, yazi,
--- shell, ~/.loki-term) actually lives. Set WSL_DISTRO below to pin a distro,
--- or leave nil to use the default one.
+-- One config for Linux / macOS / Windows. On Windows, WezTerm runs NATIVELY
+-- and opens native PowerShell by default — so claude, git, yazi, eza, bat …
+-- (the tools on your Windows PATH) all just work, with a real C:\ / Q:\ prompt.
+-- zellij has no native Windows build, so the one Linux-only convenience
+-- (LEADER-z) still launches it inside WSL on demand.
+--
+-- Prefer the old "boot straight into WSL" behaviour? Flip WIN_USE_WSL = true.
 ------------------------------------------------------------------------
 local triple = wezterm.target_triple
 local is_windows = triple:find("windows") ~= nil
 local is_mac = triple:find("darwin") ~= nil
 local WSL_DISTRO = nil -- e.g. "Ubuntu" or "Debian"; nil = default distro
 
--- Windows-only: which directory WezTerm opens in (inside WSL). Windows drives
--- are mounted under /mnt/<letter>, so Q:\Codings\... => /mnt/q/Codings/...
+-- Windows behaviour: false = native PowerShell + native tools (default).
+--                    true  = boot the whole terminal into WSL (the Linux stack).
+local WIN_USE_WSL = false
+
+-- Where WezTerm opens on Windows when running NATIVE (WIN_USE_WSL = false).
+-- A normal Windows path. Set to nil to use your home dir (%USERPROFILE%).
+local WIN_START_DIR_NATIVE = "Q:\\Codings\\ClaudeCodeProjects\\LEX"
+
+-- Where WezTerm opens on Windows when running via WSL (WIN_USE_WSL = true).
+-- Windows drives mount under /mnt/<letter>, so Q:\Codings\... => /mnt/q/Codings/...
 -- Set to "~" for the WSL home instead. (Ignored on Linux/macOS.)
 local WIN_START_DIR = "/mnt/q/Codings/ClaudeCodeProjects/LEX"
 
--- Build an arg list that runs `cmd` in a login+interactive WSL shell on
--- Windows (so PATH/aliases load), or runs it directly on Linux/macOS.
+-- Build the arg list that runs `cmd` inside a login+interactive WSL shell
+-- (so PATH/aliases load). Used for the zellij convenience on Windows, and for
+-- every tool when WIN_USE_WSL = true.
+local function wsl_cmd(cmd)
+  local args = { "wsl.exe" }
+  if WSL_DISTRO then table.insert(args, "-d"); table.insert(args, WSL_DISTRO) end
+  for _, a in ipairs({ "--cd", WIN_START_DIR, "-e", "bash", "-lic", cmd }) do table.insert(args, a) end
+  return args
+end
+
+-- Spawn `cmd` the right way for this platform: natively on Linux/macOS and on
+-- native Windows (the tool must be on PATH), or via WSL when WIN_USE_WSL = true.
 local function run_cmd(cmd)
-  if is_windows then
-    local args = { "wsl.exe" }
-    if WSL_DISTRO then table.insert(args, "-d"); table.insert(args, WSL_DISTRO) end
-    for _, a in ipairs({ "--cd", WIN_START_DIR, "-e", "bash", "-lic", cmd }) do table.insert(args, a) end
-    return args
-  end
+  if is_windows and WIN_USE_WSL then return wsl_cmd(cmd) end
   return { cmd }
 end
 
@@ -150,10 +166,13 @@ config.window_frame = {
 ------------------------------------------------------------------------
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
-  -- Pop open yazi (file browser) in a new tab (via WSL on Windows).
+  -- Pop open yazi (file browser) in a new tab. Native everywhere (incl. Windows);
+  -- only routed through WSL when WIN_USE_WSL = true.
   { key = "y", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("yazi") }) },
-  -- Launch / attach a zellij session in a new tab (via WSL on Windows).
-  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("zellij") }) },
+  -- Launch / attach a zellij session in a new tab. zellij has no native Windows
+  -- build, so on native Windows it always opens inside WSL; native elsewhere.
+  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({
+      args = (is_windows and not WIN_USE_WSL) and wsl_cmd("zellij") or run_cmd("zellij") }) },
   -- Splits (only relevant when used WITHOUT zellij — inside zellij let zellij drive).
   { key = "\\", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
   { key = "-",  mods = "LEADER", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
@@ -203,14 +222,24 @@ config.warn_about_missing_glyphs = false
 config.adjust_window_size_when_changing_font_size = false
 
 ------------------------------------------------------------------------
--- WINDOWS: boot into WSL, where zellij/yazi/shell/~/.loki-term live.
--- (Native Windows can't run zellij — WSL is the supported path.)
+-- WINDOWS: open native PowerShell by default (claude/git/yazi/eza/… on PATH),
+-- starting in your project dir. Flip WIN_USE_WSL = true to boot into WSL instead.
+-- pwsh (PowerShell 7) is preferred if installed; otherwise Windows PowerShell.
 ------------------------------------------------------------------------
 if is_windows then
-  local prog = { "wsl.exe" }
-  if WSL_DISTRO then table.insert(prog, "-d"); table.insert(prog, WSL_DISTRO) end
-  table.insert(prog, "--cd"); table.insert(prog, WIN_START_DIR)
-  config.default_prog = prog
+  if WIN_USE_WSL then
+    local prog = { "wsl.exe" }
+    if WSL_DISTRO then table.insert(prog, "-d"); table.insert(prog, WSL_DISTRO) end
+    table.insert(prog, "--cd"); table.insert(prog, WIN_START_DIR)
+    config.default_prog = prog
+  else
+    -- Prefer pwsh.exe (PowerShell 7) if it's installed, else Windows PowerShell.
+    local ok, found = pcall(wezterm.run_child_process,
+      { "pwsh", "-NoLogo", "-NoProfile", "-Command", "exit 0" })
+    local have_pwsh = ok and found
+    config.default_prog = have_pwsh and { "pwsh.exe", "-NoLogo" } or { "powershell.exe", "-NoLogo" }
+    if WIN_START_DIR_NATIVE then config.default_cwd = WIN_START_DIR_NATIVE end
+  end
 end
 
 return config

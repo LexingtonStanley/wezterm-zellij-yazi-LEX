@@ -18,11 +18,16 @@ where missing, and symlinks every config. It backs up anything it replaces to
 
 Flags: `--no-tools` (link configs only) · `--tools-only` (install packages only).
 
-## Windows (via WSL)
+## Windows (native)
 
-Zellij and yazi don't run on native Windows — so on Windows the split is:
-**WezTerm runs natively, and boots straight into WSL**, where the whole Linux
-stack lives. `wezterm.lua` is OS-aware: it detects Windows and launches WSL for you.
+On Windows everything runs **natively**: WezTerm opens **native PowerShell** in your
+project dir, and `claude`, `git`, `yazi`, `eza`, `bat`, `lazygit` … (the tools on your
+Windows PATH) all just work — with a real `C:\` / `Q:\` prompt. `wezterm.lua` is
+OS-aware and picks `pwsh` (PowerShell 7) if installed, else Windows PowerShell.
+
+The one exception is **zellij**, which has no native Windows build. It stays in WSL and
+is reachable on demand: press **`LEADER-z`** (`Ctrl-a` then `z`) in WezTerm, or run
+`zd` / `za` from PowerShell.
 
 From PowerShell:
 
@@ -30,38 +35,47 @@ From PowerShell:
 irm https://raw.githubusercontent.com/LexingtonStanley/wezterm-zellij-yazi-LEX/master/install.ps1 | iex
 ```
 
-`install.ps1` installs the WezTerm config + JetBrainsMono Nerd Font on Windows, then
-(inside WSL) clones the repo and runs `install.sh` for zellij/yazi/shell. If WSL isn't
-present it tells you to run `wsl --install` first. Running the bash `install.sh` under
-Git Bash/MSYS is blocked with a pointer to `install.ps1`.
+`install.ps1` installs the WezTerm config + JetBrainsMono Nerd Font, winget-installs the
+native CLI tools (skipping whatever you already have), and hooks `loki-shell.ps1` into
+your PowerShell `$PROFILE` for the cyan-matrix prompt (starship), `zoxide` jumps, and
+the `ll`/`la`/`lt`/`catp`/`lg`/`y` aliases.
 
-### Working on Windows drives (Q:, D:, …) — make it yours
+Flags: `-SkipFont` · `-SkipTools` (config + font only) · `-WithWsl` (also set up the
+WSL Linux stack for zellij).
 
-Inside WSL your Windows drives appear under `/mnt/<letter>` — so `Q:\Codings\Foo`
-is `/mnt/q/Codings/Foo`. yazi and zellij run in WSL but operate on those files
-through the mount. Three knobs, all near the top of `wezterm/wezterm.lua` and in
-`yazi/keymap.toml`:
+### Prefer the old boot-into-WSL behaviour?
+
+Run `install.ps1 -WithWsl`, then set `WIN_USE_WSL = true` near the top of
+`wezterm/wezterm.lua` (re-copy it to `%USERPROFILE%\.wezterm.lua`). WezTerm will then
+boot the whole terminal into WSL like before.
+
+### Make it yours — the knobs (all near the top of `wezterm/wezterm.lua`)
 
 | Want | Edit | Example |
 |------|------|---------|
-| Open WezTerm in a specific dir | `WIN_START_DIR` in `wezterm/wezterm.lua` | `local WIN_START_DIR = "/mnt/d/projects"` |
-| Use a non-default WSL distro | `WSL_DISTRO` in `wezterm/wezterm.lua` | `local WSL_DISTRO = "Ubuntu"` |
-| yazi drive-jump shortcuts | `prepend_keymap` in `yazi/keymap.toml` | `{ on=["g","e"], run="cd /mnt/e", desc="Go: E:" }` |
+| Open WezTerm in a specific dir (native) | `WIN_START_DIR_NATIVE` | `local WIN_START_DIR_NATIVE = "D:\\projects"` |
+| Boot into WSL instead of PowerShell | `WIN_USE_WSL` | `local WIN_USE_WSL = true` |
+| Start dir when in WSL mode | `WIN_START_DIR` | `local WIN_START_DIR = "/mnt/d/projects"` |
+| Use a non-default WSL distro (zellij/WSL mode) | `WSL_DISTRO` | `local WSL_DISTRO = "Ubuntu"` |
+| yazi drive-jump shortcuts | `prepend_keymap` in `yazi/keymap.toml` | `{ on=["g","e"], run="cd E:\\", desc="Go: E:" }` |
 
 Built-in yazi jumps (press `g` then the key): `l`=the LEX project, `q`/`c`/`d`/`x`/`z`=that
 drive, `w`=WSL home. Add your own drives by copying a line in `yazi/keymap.toml`.
 
-After editing on the **WSL side** (yazi/zellij/shell): `git -C ~/.loki-term pull && ~/.loki-term/install.sh --no-tools`.
+After editing **`loki-shell.ps1`** (native Windows aliases/prompt): just open a new
+PowerShell/WezTerm window — `$PROFILE` re-sources it.
+After editing on the **WSL/Linux side** (yazi/zellij/shell): `git -C ~/.loki-term pull && ~/.loki-term/install.sh --no-tools`.
 After editing **`wezterm.lua`**: the Windows `%USERPROFILE%\.wezterm.lua` is a *copy*
 (Windows symlinks need admin), so re-run `install.ps1` or copy `wezterm/wezterm.lua`
 over it. WezTerm auto-reloads — just open a new window.
 
-### Slow prompt / "command timed out"
+### Slow prompt / "command timed out" (WSL mode only)
 
-Git and version commands on a `/mnt/<letter>` drive are slower than native WSL, which
-can trip starship's timeout. Raise `command_timeout` / `scan_timeout` in
+If you run in WSL mode, git/version commands on a `/mnt/<letter>` drive are slower than
+native WSL and can trip starship's timeout. Raise `command_timeout` / `scan_timeout` in
 `starship/starship.toml` (already bumped to 2000ms / 300ms here). For heavy git/npm
-work, the native WSL filesystem (`~`) is much faster than `/mnt`.
+work, the native WSL filesystem (`~`) is much faster than `/mnt`. (Native PowerShell
+mode runs directly on the Windows drive, so this doesn't apply.)
 
 ## What's inside
 
@@ -75,7 +89,8 @@ work, the native WSL filesystem (`~`) is much faster than `/mnt`.
 | `yazi/`                      | yazi theme.toml + yazi.toml |
 | `starship/starship.toml`     | cyan-matrix prompt |
 | `shell/loki-shell.sh`        | sourced from `~/.bashrc`: fzf, zoxide, eza, bat, aliases, prompt |
-| `install.ps1`                | Windows bootstrap: WezTerm config + font, then WSL setup |
+| `shell/loki-shell.ps1`       | native-Windows PowerShell profile: starship, zoxide, eza/bat aliases |
+| `install.ps1`                | Windows bootstrap (native): WezTerm config + font + CLI tools + PS profile |
 | `cheatsheet.html`            | every keyboard shortcut, matrix-styled, searchable |
 
 ## Handy aliases (from `loki-shell.sh`)

@@ -1,21 +1,27 @@
 # install.ps1 :: Windows-side bootstrap for the Loki terminal setup.
 #
-# On Windows the split is:
-#   • WezTerm runs natively  -> this script installs its config + the font
-#   • everything else (zellij, yazi, shell, ~/.loki-term) runs inside WSL,
-#     where the normal Linux install.sh does the work.
-# The wezterm.lua is OS-aware: it detects Windows and boots straight into WSL.
+# Windows is NATIVE by default:
+#   • WezTerm runs natively and opens native PowerShell (claude/git/yazi/eza/…)
+#   • this script installs the WezTerm config + Nerd Font + the CLI tools (winget)
+#     and wires a PowerShell $PROFILE that loads loki-shell.ps1 (prompt + aliases)
+#   • zellij has no native Windows build — it's the one piece that stays in WSL,
+#     reachable on demand via WezTerm's LEADER-z (or `zd`/`za` from PowerShell)
+#
+# Want the old "boot the whole terminal into WSL" behaviour instead? Pass -WithWsl
+# here AND set WIN_USE_WSL = true near the top of wezterm/wezterm.lua.
 #
 # Run from PowerShell:
 #   irm https://raw.githubusercontent.com/LexingtonStanley/wezterm-zellij-yazi-LEX/master/install.ps1 | iex
 #   (or, if you already cloned:  powershell -ExecutionPolicy Bypass -File ~\.loki-term\install.ps1)
 #
-# Flags:  -SkipFont   skip the Nerd Font install
-#         -SkipWsl    don't touch WSL (only do the Windows-native bits)
+# Flags:  -SkipFont    skip the Nerd Font install
+#         -SkipTools   don't winget-install the CLI tools (config + font only)
+#         -WithWsl     also set up the Linux stack inside WSL (for zellij etc.)
 [CmdletBinding()]
 param(
   [switch]$SkipFont,
-  [switch]$SkipWsl
+  [switch]$SkipTools,
+  [switch]$WithWsl
 )
 $ErrorActionPreference = "Stop"
 $RepoHttps = "https://github.com/LexingtonStanley/wezterm-zellij-yazi-LEX.git"
@@ -25,11 +31,12 @@ $RepoDir   = Join-Path $env:USERPROFILE ".loki-term"
 function Cyan($m){ Write-Host $m -ForegroundColor Cyan }
 function Ok($m)  { Write-Host "  [ok] $m" -ForegroundColor Green }
 function Warn($m){ Write-Host "  [!] $m" -ForegroundColor Yellow }
+function Have($n){ [bool](Get-Command $n -ErrorAction SilentlyContinue) }
 
-Cyan "==> Loki terminal :: Windows setup"
+Cyan "==> Loki terminal :: Windows setup (native)"
 
-# ── 1. Get the repo (for wezterm.lua + future `git pull`) ────────────────
-$haveGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
+# ── 1. Get the repo (for wezterm.lua/loki-shell.ps1 + future `git pull`) ──
+$haveGit = Have git
 if ($haveGit) {
   if (Test-Path (Join-Path $RepoDir ".git")) {
     Cyan "Updating existing clone at $RepoDir"
@@ -40,9 +47,11 @@ if ($haveGit) {
   }
   Ok "repo ready at $RepoDir"
 } else {
-  Warn "git not found on Windows — fetching just wezterm.lua (install Git for full sync)"
+  Warn "git not found — fetching just the files we need (install Git for full sync)"
   New-Item -ItemType Directory -Force -Path (Join-Path $RepoDir "wezterm") | Out-Null
-  Invoke-WebRequest "$RawBase/wezterm/wezterm.lua" -OutFile (Join-Path $RepoDir "wezterm\wezterm.lua")
+  New-Item -ItemType Directory -Force -Path (Join-Path $RepoDir "shell")   | Out-Null
+  Invoke-WebRequest "$RawBase/wezterm/wezterm.lua"   -OutFile (Join-Path $RepoDir "wezterm\wezterm.lua")
+  Invoke-WebRequest "$RawBase/shell/loki-shell.ps1"  -OutFile (Join-Path $RepoDir "shell\loki-shell.ps1")
 }
 
 # ── 2. Install the WezTerm config (~/.wezterm.lua, i.e. %USERPROFILE%) ────
@@ -54,7 +63,12 @@ if (Test-Path $dst) {
   Warn "backed up existing .wezterm.lua -> $bak"
 }
 Copy-Item $src $dst -Force
-Ok "installed $dst (it auto-detects Windows and boots WSL)"
+Ok "installed $dst (opens native PowerShell)"
+
+# Tidy: a stale ~/.config/wezterm/wezterm.lua would shadow nothing (~/.wezterm.lua
+# wins) but causes confusion — point it out if present.
+$alt = Join-Path $env:USERPROFILE ".config\wezterm\wezterm.lua"
+if (Test-Path $alt) { Warn "note: a second config exists at $alt (it is ignored; ~/.wezterm.lua wins)" }
 
 # ── 3. JetBrainsMono Nerd Font (per-user, no admin needed) ───────────────
 if (-not $SkipFont) {
@@ -83,18 +97,70 @@ if (-not $SkipFont) {
   }
 }
 
-# ── 4. WSL side: clone repo + run the Linux install.sh ───────────────────
-if (-not $SkipWsl) {
-  $haveWsl = [bool](Get-Command wsl.exe -ErrorAction SilentlyContinue)
-  if (-not $haveWsl) {
-    Warn "WSL not found. Install it (admin PowerShell):  wsl --install"
-    Warn "Then re-run this script to finish the Linux side."
+# ── 4. Native CLI tools via winget (best-effort; skips whatever you have) ──
+if (-not $SkipTools) {
+  if (-not (Have winget)) {
+    Warn "winget not found — skipping tools. Install 'App Installer' from the Store, then re-run."
+  } else {
+    Cyan "Installing native CLI tools via winget (already-installed ones are skipped)…"
+    # command-name -> winget id. starship/zoxide drive the prompt + `z`; the rest
+    # back the loki-shell.ps1 aliases (ll/la/lt/catp/lg/y).
+    $tools = [ordered]@{
+      starship  = "Starship.Starship"
+      zoxide    = "ajeetdsouza.zoxide"
+      eza       = "eza-community.eza"
+      bat       = "sharkdp.bat"
+      fzf       = "junegunn.fzf"
+      fd        = "sharkdp.fd"
+      rg        = "BurntSushi.ripgrep.MSVC"
+      yazi      = "sxyazi.yazi"
+      lazygit   = "JesseDuffield.lazygit"
+      delta     = "dandavison.delta"
+      fastfetch = "Fastfetch-cli.Fastfetch"
+    }
+    foreach ($cmd in $tools.Keys) {
+      if (Have $cmd) { Ok "$cmd already installed"; continue }
+      $id = $tools[$cmd]
+      Cyan "  installing $cmd ($id)"
+      try {
+        winget install --id $id -e --source winget --accept-package-agreements --accept-source-agreements -h | Out-Null
+        Ok "$cmd installed"
+      } catch { Warn "could not install $cmd ($id) — install it manually later" }
+    }
+    # PSFzf gives Ctrl-t / Ctrl-r fuzzy bindings in PowerShell (optional).
+    if (-not (Get-Module -ListAvailable -Name PSFzf)) {
+      try { Install-Module PSFzf -Scope CurrentUser -Force -ErrorAction Stop; Ok "PSFzf module installed" }
+      catch { Warn "PSFzf module skipped (optional)" }
+    }
+    if (-not (Have claude)) {
+      Warn "claude (Claude Code) not on PATH — install it with:  irm https://claude.ai/install.ps1 | iex"
+    } else { Ok "claude already installed" }
+  }
+}
+
+# ── 5. Wire loki-shell.ps1 into the PowerShell profile (prompt + aliases) ──
+$profilePath = $PROFILE.CurrentUserAllHosts
+$profileDir  = Split-Path $profilePath -Parent
+New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+$lokiLine = ". `"$RepoDir\shell\loki-shell.ps1`""
+$marker   = "loki-shell.ps1"
+$already  = (Test-Path $profilePath) -and (Select-String -Path $profilePath -SimpleMatch $marker -Quiet)
+if ($already) {
+  Ok "PowerShell profile already sources loki-shell.ps1"
+} else {
+  Add-Content -Path $profilePath -Value "`n# Loki terminal (added by install.ps1)`n$lokiLine`n"
+  Ok "hooked loki-shell.ps1 into $profilePath"
+}
+
+# ── 6. Optional: the WSL Linux stack (only with -WithWsl) ─────────────────
+if ($WithWsl) {
+  if (-not (Have wsl.exe)) {
+    Warn "WSL not found. Install it (admin PowerShell):  wsl --install   then re-run with -WithWsl"
   } else {
     Cyan "Setting up the Linux stack inside WSL (zellij/yazi/shell)…"
     Warn "WSL's install.sh may ask for your sudo password — that's expected."
-    # LF-safe: clone with autocrlf disabled, and defensively strip any stray
-    # CRs so install.sh's `#!/usr/bin/env bash` shebang can't become `bash\r`
-    # (the bug that broke the first Windows install). Then run install.sh.
+    # LF-safe: clone with autocrlf disabled and strip stray CRs so the shebang
+    # can't become `bash\r`, then run install.sh.
     $wslCmd = @'
 set -e
 REPO="$HOME/.loki-term"
@@ -107,16 +173,14 @@ if [ -d "$REPO/.git" ]; then
 else
   git clone -c core.autocrlf=false -c core.eol=lf "$URL" "$REPO"
 fi
-# reset --hard won't rewrite files git considers "clean" after EOL normalization,
-# so force-strip CRs on disk (skip .ps1), then re-sync the index.
 ( cd "$REPO" && git ls-files | grep -v '\.ps1$' | xargs sed -i 's/\r$//' && git add --renormalize . ) || true
 bash "$REPO/install.sh"
 '@
-    # -lc (login) so PATH/sudo TTY work; run on the console so sudo can prompt.
     wsl.exe -e bash -lc $wslCmd
     Ok "WSL side complete"
   }
 }
 
-Cyan "==> Done. Launch WezTerm — it will open straight into WSL."
-Cyan "    Inside WSL:  zd  (zellij dev layout)   |   cheatsheet: ~/.loki-term/cheatsheet.html"
+Cyan "==> Done. Launch WezTerm — it opens native PowerShell in your project dir."
+Cyan "    claude, git, yazi, ll/la/lt all work natively. zellij: press LEADER-z (Ctrl-a z) for a WSL session."
+Cyan "    Cheatsheet: $RepoDir\cheatsheet.html"
