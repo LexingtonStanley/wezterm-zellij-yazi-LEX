@@ -64,6 +64,7 @@ link_configs() {
   link "$REPO/zellij/layouts/loki-agent.kdl"  "$HOME/.config/zellij/layouts/loki-agent.kdl"
   link "$REPO/yazi/theme.toml"                "$HOME/.config/yazi/theme.toml"
   link "$REPO/yazi/yazi.toml"                 "$HOME/.config/yazi/yazi.toml"
+  link "$REPO/yazi/keymap.toml"               "$HOME/.config/yazi/keymap.toml"
   link "$REPO/starship/starship.toml"         "$HOME/.config/starship.toml"
 
   # Nested-session config: identical to config.kdl but the control key is

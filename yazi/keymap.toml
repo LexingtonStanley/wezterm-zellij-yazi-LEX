@@ -1,0 +1,15 @@
+# Loki yazi keymap :: quick drive-jumps for Windows/WSL.
+# Windows drives are mounted under /mnt/<letter> inside WSL, so these let you
+# hop between them with `g` then a key. (On Linux boxes the /mnt paths don't
+# exist, so those entries are harmless no-ops.)
+# prepend_keymap is checked before yazi's defaults, so these win on conflicts.
+[mgr]
+prepend_keymap = [
+  { on = ["g","l"], run = "cd /mnt/q/Codings/ClaudeCodeProjects/LEX", desc = "Go: LEX project (Q:)" },
+  { on = ["g","q"], run = "cd /mnt/q", desc = "Go: Q: drive" },
+  { on = ["g","c"], run = "cd /mnt/c", desc = "Go: C: drive" },
+  { on = ["g","d"], run = "cd /mnt/d", desc = "Go: D: drive" },
+  { on = ["g","x"], run = "cd /mnt/x", desc = "Go: X: drive" },
+  { on = ["g","z"], run = "cd /mnt/z", desc = "Go: Z: drive" },
+  { on = ["g","w"], run = "cd ~",      desc = "Go: WSL home" },
+]

@@ -20,13 +20,18 @@ local is_windows = triple:find("windows") ~= nil
 local is_mac = triple:find("darwin") ~= nil
 local WSL_DISTRO = nil -- e.g. "Ubuntu" or "Debian"; nil = default distro
 
+-- Windows-only: which directory WezTerm opens in (inside WSL). Windows drives
+-- are mounted under /mnt/<letter>, so Q:\Codings\... => /mnt/q/Codings/...
+-- Set to "~" for the WSL home instead. (Ignored on Linux/macOS.)
+local WIN_START_DIR = "/mnt/q/Codings/ClaudeCodeProjects/LEX"
+
 -- Build an arg list that runs `cmd` in a login+interactive WSL shell on
 -- Windows (so PATH/aliases load), or runs it directly on Linux/macOS.
 local function run_cmd(cmd)
   if is_windows then
     local args = { "wsl.exe" }
     if WSL_DISTRO then table.insert(args, "-d"); table.insert(args, WSL_DISTRO) end
-    for _, a in ipairs({ "--cd", "~", "-e", "bash", "-lic", cmd }) do table.insert(args, a) end
+    for _, a in ipairs({ "--cd", WIN_START_DIR, "-e", "bash", "-lic", cmd }) do table.insert(args, a) end
     return args
   end
   return { cmd }
@@ -204,7 +209,7 @@ config.adjust_window_size_when_changing_font_size = false
 if is_windows then
   local prog = { "wsl.exe" }
   if WSL_DISTRO then table.insert(prog, "-d"); table.insert(prog, WSL_DISTRO) end
-  table.insert(prog, "--cd"); table.insert(prog, "~")
+  table.insert(prog, "--cd"); table.insert(prog, WIN_START_DIR)
   config.default_prog = prog
 end
 
