@@ -92,14 +92,28 @@ if (-not $SkipWsl) {
   } else {
     Cyan "Setting up the Linux stack inside WSL (zellij/yazi/shell)…"
     Warn "WSL's install.sh may ask for your sudo password — that's expected."
+    # LF-safe: clone with autocrlf disabled, and defensively strip any stray
+    # CRs so install.sh's `#!/usr/bin/env bash` shebang can't become `bash\r`
+    # (the bug that broke the first Windows install). Then run install.sh.
     $wslCmd = @'
 set -e
-if [ -d ~/.loki-term/.git ]; then git -C ~/.loki-term pull --ff-only; \
-else git clone https://github.com/LexingtonStanley/wezterm-zellij-yazi-LEX.git ~/.loki-term; fi
-~/.loki-term/install.sh
+REPO="$HOME/.loki-term"
+URL="https://github.com/LexingtonStanley/wezterm-zellij-yazi-LEX.git"
+if [ -d "$REPO/.git" ]; then
+  git -C "$REPO" config core.autocrlf false
+  git -C "$REPO" config core.eol lf
+  git -C "$REPO" fetch -q origin || true
+  git -C "$REPO" reset --hard origin/master 2>/dev/null || git -C "$REPO" pull --ff-only || true
+else
+  git clone -c core.autocrlf=false -c core.eol=lf "$URL" "$REPO"
+fi
+# reset --hard won't rewrite files git considers "clean" after EOL normalization,
+# so force-strip CRs on disk (skip .ps1), then re-sync the index.
+( cd "$REPO" && git ls-files | grep -v '\.ps1$' | xargs sed -i 's/\r$//' && git add --renormalize . ) || true
+bash "$REPO/install.sh"
 '@
-    # Run interactively so the sudo prompt works.
-    wsl.exe -e bash -lic $wslCmd
+    # -lc (login) so PATH/sudo TTY work; run on the console so sudo can prompt.
+    wsl.exe -e bash -lc $wslCmd
     Ok "WSL side complete"
   }
 }
