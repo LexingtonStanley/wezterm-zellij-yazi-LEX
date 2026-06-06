@@ -36,6 +36,17 @@ if (Get-Module -ListAvailable -Name PSFzf -ErrorAction SilentlyContinue) {
   try { Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r' } catch {}
 }
 
+# -- predictive autosuggestions: PSReadLine ghost text from history ----------
+# The native-Windows equivalent of ble.sh on the Linux side: as you type, the
+# rest of a previous command appears greyed out - press Right/End to accept.
+# Needs PSReadLine 2.1+ (ships with Windows 10+ / PowerShell 7); guarded so an
+# older host just skips it instead of erroring.
+try {
+  Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
+  try { Set-PSReadLineOption -PredictionViewStyle InlineView } catch {}
+  try { Set-PSReadLineOption -Colors @{ InlinePrediction = "$([char]0x1b)[38;2;43;107;96m" } } catch {}  # dim teal, matches ble.sh
+} catch {}
+
 # -- listings: eza with icons + git (ll / la / lt), else fall back to dir ----
 if (_have eza) {
   function ll { eza -lah --icons --group-directories-first --git @args }

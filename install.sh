@@ -152,7 +152,25 @@ install_pkgs() {
     # ignore it: loki-shell.sh already runs `eval "$(starship init bash)"`.
     ok "starship wired automatically via loki-shell.sh — ignore its manual-setup printout"
   fi
+  install_blesh
   install_nerd_font
+}
+
+# ble.sh = fish-style autosuggestions (grey ghost text from history) for bash.
+# Not packaged in apt; build from source into ~/.local/share/blesh. loki-shell.sh
+# sources it automatically when present (guarded by a file check), so a box
+# without it just falls back to plain bash line editing.
+install_blesh() {
+  [ -f "$HOME/.local/share/blesh/ble.sh" ] && { ok "ble.sh present (autosuggestions)"; return; }
+  c "Installing ble.sh (bash autosuggestions)"
+  ensure git git && ensure make make && ensure gawk gawk || { warn "ble.sh needs git/make/gawk"; return; }
+  local tmp; tmp="$(mktemp -d)"
+  git clone --recursive --depth 1 --shallow-submodules \
+      https://github.com/akinomyoga/ble.sh.git "$tmp/ble.sh" >/dev/null 2>&1 \
+    && make -C "$tmp/ble.sh" install PREFIX="$HOME/.local" >/dev/null 2>&1
+  rm -rf "$tmp"
+  [ -f "$HOME/.local/share/blesh/ble.sh" ] && ok "ble.sh installed (→ press → to accept a suggestion)" \
+    || warn "ble.sh install failed"
 }
 
 # Unzip a file to a dir using whatever's available (unzip, else bsdtar).

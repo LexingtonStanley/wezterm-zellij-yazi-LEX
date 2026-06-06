@@ -15,6 +15,17 @@ case $- in *i*) ;; *) return ;; esac
 # ~/.local/bin when installed without root — e.g. inside WSL without sudo).
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
 
+# ── ble.sh (fish-style autosuggestions: grey ghost text from history) ────
+# This is the "predictive typing" — type a few chars and the rest of a past
+# command appears greyed out; press → (Right) or End to accept, Ctrl-→ for one
+# word. Bash has no such feature natively; ble.sh provides it. Must be sourced
+# EARLY with --noattach, then attached at the very END of this file so it wraps
+# the PROMPT_COMMAND that starship/fzf/zoxide install below.
+# Install: see ~/.loki-term/install.sh (builds it to ~/.local/share/blesh).
+if [ -f "$HOME/.local/share/blesh/ble.sh" ]; then
+  source "$HOME/.local/share/blesh/ble.sh" --noattach
+fi
+
 # ── palette (matches wezterm / zellij / yazi / starship) ────────────────
 _LK_CYAN='\[\033[38;2;0;240;192m\]'   # #00f0c0
 _LK_NEON='\[\033[38;2;42;250;223m\]'  # #2afadf
@@ -112,4 +123,14 @@ if command -v starship >/dev/null 2>&1; then
 else
   # Recoloured version of the classic Parrot box prompt: red → cyan/turquoise.
   PS1="${_LK_CYAN}\342\224\214\342\224\200\$([[ \$? != 0 ]] && echo \"[${_LK_RED}\342\234\227${_LK_CYAN}]\342\224\200\")[$(if [[ ${EUID} == 0 ]]; then echo "${_LK_RED}\u${_LK_YEL}@${_LK_NEON}\h"; else echo "${_LK_GREEN}\u${_LK_YEL}@${_LK_NEON}\h"; fi)${_LK_CYAN}]\342\224\200[${_LK_NEON}\w${_LK_CYAN}]\n${_LK_CYAN}\342\224\224\342\224\200\342\224\200\342\225\274 ${_LK_NEON}\\$ ${_LK_RST}"
+fi
+
+# ── attach ble.sh LAST (after starship/fzf/zoxide set PROMPT_COMMAND) ─────
+# Tune the autosuggestion look to match the cyan-matrix palette: dim-teal ghost
+# text, and accept the whole suggestion with → / End (ble.sh default).
+if [[ ${BLE_VERSION-} ]]; then
+  bleopt complete_auto_complete=1                          # ghost text on (default)
+  bleopt complete_auto_history=1                           # source suggestions from history
+  ble-face -s auto_complete 'fg=#2b6b60'                   # _LK_DIM grey-teal ghost text
+  ble-attach
 fi

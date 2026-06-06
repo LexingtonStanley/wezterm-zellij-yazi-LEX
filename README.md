@@ -88,8 +88,8 @@ mode runs directly on the Windows drive, so this doesn't apply.)
 | `zellij/layouts/loki-agent.kdl` | …+ a tmux `agents` pane for inter-agent chat |
 | `yazi/`                      | yazi theme.toml + yazi.toml |
 | `starship/starship.toml`     | cyan-matrix prompt |
-| `shell/loki-shell.sh`        | sourced from `~/.bashrc`: fzf, zoxide, eza, bat, aliases, prompt |
-| `shell/loki-shell.ps1`       | native-Windows PowerShell profile: starship, zoxide, eza/bat aliases |
+| `shell/loki-shell.sh`        | sourced from `~/.bashrc`: ble.sh autosuggestions, fzf, zoxide, eza, bat, aliases, prompt |
+| `shell/loki-shell.ps1`       | native-Windows PowerShell profile: PSReadLine autosuggestions, starship, zoxide, eza/bat aliases |
 | `install.ps1`                | Windows bootstrap (native): WezTerm config + font + CLI tools + PS profile |
 | `cheatsheet.html`            | every keyboard shortcut, matrix-styled, searchable |
 
