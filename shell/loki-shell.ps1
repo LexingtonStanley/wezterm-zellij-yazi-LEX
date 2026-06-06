@@ -2,7 +2,7 @@
 # Sourced from your PowerShell $PROFILE by install.ps1. The bash equivalent is
 # loki-shell.sh; this brings the same prompt/aliases/look to native PowerShell so
 # claude + the CLI stack feel identical on Windows. Every block is guarded, so a
-# missing tool just skips — it can never break your shell.
+# missing tool just skips - it can never break your shell.
 
 # UTF-8 everywhere (Nerd Font glyphs, box-drawing, emoji).
 try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new() } catch {}
@@ -20,23 +20,23 @@ if (Test-Path (Join-Path $LokiRepo "yazi")) {
 
 function _have($name) { [bool](Get-Command $name -ErrorAction SilentlyContinue) }
 
-# ── prompt: starship (cyan-matrix theme shared with the rest of the stack) ──
+# -- prompt: starship (cyan-matrix theme shared with the rest of the stack) --
 if (_have starship) {
   Invoke-Expression (& starship init powershell)
 }
 
-# ── smart-jump: zoxide (provides `z` / `zi`) ───────────────────────────────
+# -- smart-jump: zoxide (provides `z` / `zi`) -------------------------------
 if (_have zoxide) {
   Invoke-Expression (& { (zoxide init powershell | Out-String) })
 }
 
-# ── fuzzy finder: PSFzf if the module is installed (Ctrl-t / Ctrl-r) ────────
+# -- fuzzy finder: PSFzf if the module is installed (Ctrl-t / Ctrl-r) --------
 if (Get-Module -ListAvailable -Name PSFzf -ErrorAction SilentlyContinue) {
   Import-Module PSFzf -ErrorAction SilentlyContinue
   try { Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r' } catch {}
 }
 
-# ── listings: eza with icons + git (ll / la / lt), else fall back to dir ────
+# -- listings: eza with icons + git (ll / la / lt), else fall back to dir ----
 if (_have eza) {
   function ll { eza -lah --icons --group-directories-first --git @args }
   function la { eza -a  --icons --group-directories-first @args }
@@ -46,10 +46,10 @@ if (_have eza) {
   function ll { Get-ChildItem -Force @args }
 }
 
-# ── file preview: bat (keeps `cat` intact; use `catp` for the pretty one) ───
+# -- file preview: bat (keeps `cat` intact; use `catp` for the pretty one) ---
 if (_have bat) { function catp { bat @args } }
 
-# ── handy launchers ────────────────────────────────────────────────────────
+# -- handy launchers --------------------------------------------------------
 if (_have yazi)     { function y  { yazi @args }; function yz { yazi @args } }
 if (_have lazygit)  { function lg { lazygit @args } }
 if (_have git)      { function gs { git status @args }; function gl { git log --oneline --graph --decorate -20 @args } }
