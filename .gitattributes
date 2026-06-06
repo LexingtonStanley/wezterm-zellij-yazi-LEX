@@ -1,0 +1,7 @@
+# Force LF on everything so shell scripts & configs work on Linux/WSL/macOS
+# regardless of the cloning machine's core.autocrlf setting. (A CRLF shebang
+# like `#!/usr/bin/env bash\r` is fatal on Linux — this prevents it.)
+* text=auto eol=lf
+
+# PowerShell is the one place we want Windows line endings.
+*.ps1 text eol=crlf
