@@ -11,6 +11,10 @@
 # Only run for interactive shells.
 case $- in *i*) ;; *) return ;; esac
 
+# Ensure user-local bins are on PATH (zellij/yazi/starship can live in
+# ~/.local/bin when installed without root — e.g. inside WSL without sudo).
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+
 # ── palette (matches wezterm / zellij / yazi / starship) ────────────────
 _LK_CYAN='\[\033[38;2;0;240;192m\]'   # #00f0c0
 _LK_NEON='\[\033[38;2;42;250;223m\]'  # #2afadf
