@@ -9,6 +9,30 @@ local act = wezterm.action
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 
 ------------------------------------------------------------------------
+-- PLATFORM DETECTION
+-- One config for Linux / macOS / Windows. On Windows, WezTerm runs natively
+-- but boots straight into WSL — that's where the Linux stack (zellij, yazi,
+-- shell, ~/.loki-term) actually lives. Set WSL_DISTRO below to pin a distro,
+-- or leave nil to use the default one.
+------------------------------------------------------------------------
+local triple = wezterm.target_triple
+local is_windows = triple:find("windows") ~= nil
+local is_mac = triple:find("darwin") ~= nil
+local WSL_DISTRO = nil -- e.g. "Ubuntu" or "Debian"; nil = default distro
+
+-- Build an arg list that runs `cmd` in a login+interactive WSL shell on
+-- Windows (so PATH/aliases load), or runs it directly on Linux/macOS.
+local function run_cmd(cmd)
+  if is_windows then
+    local args = { "wsl.exe" }
+    if WSL_DISTRO then table.insert(args, "-d"); table.insert(args, WSL_DISTRO) end
+    for _, a in ipairs({ "--cd", "~", "-e", "bash", "-lic", cmd }) do table.insert(args, a) end
+    return args
+  end
+  return { cmd }
+end
+
+------------------------------------------------------------------------
 -- PALETTE  (single source of truth — keep in sync with zellij/yazi/starship)
 ------------------------------------------------------------------------
 local C = {
@@ -88,9 +112,9 @@ config.colors = {
 ------------------------------------------------------------------------
 -- LOOK & FEEL
 ------------------------------------------------------------------------
-config.window_background_opacity = 0.94
+config.window_background_opacity = is_windows and 0.96 or 0.94
 config.text_background_opacity = 1.0
-config.macos_window_background_blur = 20
+if is_mac then config.macos_window_background_blur = 20 end
 -- "RESIZE" = borderless/sleek (no OS title bar). Because there's no title bar
 -- to grab, move the window with SUPER+drag or CTRL+SHIFT+drag (see mouse_bindings).
 -- Prefer a normal draggable title bar instead? Change this to "TITLE | RESIZE".
@@ -121,10 +145,10 @@ config.window_frame = {
 ------------------------------------------------------------------------
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
-  -- Pop open yazi (file browser) in a new tab, in the current dir.
-  { key = "y", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = { "yazi" } }) },
-  -- Launch / attach a zellij session in a new tab.
-  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = { "zellij" } }) },
+  -- Pop open yazi (file browser) in a new tab (via WSL on Windows).
+  { key = "y", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("yazi") }) },
+  -- Launch / attach a zellij session in a new tab (via WSL on Windows).
+  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("zellij") }) },
   -- Splits (only relevant when used WITHOUT zellij — inside zellij let zellij drive).
   { key = "\\", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
   { key = "-",  mods = "LEADER", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
@@ -172,5 +196,16 @@ config.term = "xterm-256color"  -- safe default; wezterm's own terminfo also wor
 config.front_end = "WebGpu"     -- crisp GPU rendering; falls back automatically
 config.warn_about_missing_glyphs = false
 config.adjust_window_size_when_changing_font_size = false
+
+------------------------------------------------------------------------
+-- WINDOWS: boot into WSL, where zellij/yazi/shell/~/.loki-term live.
+-- (Native Windows can't run zellij — WSL is the supported path.)
+------------------------------------------------------------------------
+if is_windows then
+  local prog = { "wsl.exe" }
+  if WSL_DISTRO then table.insert(prog, "-d"); table.insert(prog, WSL_DISTRO) end
+  table.insert(prog, "--cd"); table.insert(prog, "~")
+  config.default_prog = prog
+end
 
 return config

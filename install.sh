@@ -13,6 +13,18 @@
 #
 set -euo pipefail
 
+# Detect the machine and route to the right installer.
+# WSL reports "Linux" and proceeds normally (that's the supported Windows path).
+# Git Bash / MSYS / Cygwin on *native* Windows can't run zellij — redirect to install.ps1.
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*)
+    echo "This is Git Bash / MSYS on native Windows — zellij/yazi need WSL here."
+    echo "Run the Windows installer from PowerShell instead:"
+    echo "    powershell -ExecutionPolicy Bypass -File \"$(dirname "${BASH_SOURCE[0]}")/install.ps1\""
+    echo "It installs WezTerm's config + the font, then sets up the Linux stack inside WSL."
+    exit 1 ;;
+esac
+
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TS="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo bak)"
 DO_LINK=1; DO_TOOLS=1
