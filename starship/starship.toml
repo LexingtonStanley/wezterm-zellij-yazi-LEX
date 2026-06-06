@@ -3,7 +3,11 @@
 # Needs a Nerd Font (you have JetBrainsMono Nerd Font) for the glyphs.
 
 add_newline = true
-command_timeout = 800
+# Raise these if you work on slow filesystems — e.g. Windows drives mounted in
+# WSL at /mnt/<letter>, where git/version commands are much slower and otherwise
+# trigger "command timed out" warnings in the prompt.
+command_timeout = 2000   # ms (was 800) — budget for module commands like git
+scan_timeout = 300       # ms (default 30) — budget for scanning files to pick modules
 
 format = """
 [╭─](#2b6b60)$os$username$hostname$directory$git_branch$git_status$nodejs$python$rust$cmd_duration

@@ -32,9 +32,36 @@ irm https://raw.githubusercontent.com/LexingtonStanley/wezterm-zellij-yazi-LEX/m
 
 `install.ps1` installs the WezTerm config + JetBrainsMono Nerd Font on Windows, then
 (inside WSL) clones the repo and runs `install.sh` for zellij/yazi/shell. If WSL isn't
-present it tells you to run `wsl --install` first. Pin a specific distro by setting
-`WSL_DISTRO` near the top of `wezterm/wezterm.lua`. Running the bash `install.sh` under
+present it tells you to run `wsl --install` first. Running the bash `install.sh` under
 Git Bash/MSYS is blocked with a pointer to `install.ps1`.
+
+### Working on Windows drives (Q:, D:, …) — make it yours
+
+Inside WSL your Windows drives appear under `/mnt/<letter>` — so `Q:\Codings\Foo`
+is `/mnt/q/Codings/Foo`. yazi and zellij run in WSL but operate on those files
+through the mount. Three knobs, all near the top of `wezterm/wezterm.lua` and in
+`yazi/keymap.toml`:
+
+| Want | Edit | Example |
+|------|------|---------|
+| Open WezTerm in a specific dir | `WIN_START_DIR` in `wezterm/wezterm.lua` | `local WIN_START_DIR = "/mnt/d/projects"` |
+| Use a non-default WSL distro | `WSL_DISTRO` in `wezterm/wezterm.lua` | `local WSL_DISTRO = "Ubuntu"` |
+| yazi drive-jump shortcuts | `prepend_keymap` in `yazi/keymap.toml` | `{ on=["g","e"], run="cd /mnt/e", desc="Go: E:" }` |
+
+Built-in yazi jumps (press `g` then the key): `l`=the LEX project, `q`/`c`/`d`/`x`/`z`=that
+drive, `w`=WSL home. Add your own drives by copying a line in `yazi/keymap.toml`.
+
+After editing on the **WSL side** (yazi/zellij/shell): `git -C ~/.loki-term pull && ~/.loki-term/install.sh --no-tools`.
+After editing **`wezterm.lua`**: the Windows `%USERPROFILE%\.wezterm.lua` is a *copy*
+(Windows symlinks need admin), so re-run `install.ps1` or copy `wezterm/wezterm.lua`
+over it. WezTerm auto-reloads — just open a new window.
+
+### Slow prompt / "command timed out"
+
+Git and version commands on a `/mnt/<letter>` drive are slower than native WSL, which
+can trip starship's timeout. Raise `command_timeout` / `scan_timeout` in
+`starship/starship.toml` (already bumped to 2000ms / 300ms here). For heavy git/npm
+work, the native WSL filesystem (`~`) is much faster than `/mnt`.
 
 ## What's inside
 
