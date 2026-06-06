@@ -1,0 +1,122 @@
+# Loki yazi theme :: cyan/turquoise matrix
+# Part of ~/.loki-term. Symlinked to ~/.config/yazi/theme.toml by install.sh.
+
+[mgr]
+cwd = { fg = "#2afadf", bold = true }
+
+# hovered (cursor) row
+hovered         = { fg = "#04110d", bg = "#00f0c0", bold = true }
+preview_hovered = { underline = true }
+
+# search
+find_keyword  = { fg = "#04110d", bg = "#b8e994", bold = true }
+find_position = { fg = "#5ef1ff", bg = "reset", italic = true }
+
+# selection / yank markers
+marker_copied   = { fg = "#00d68f", bg = "#00d68f" }
+marker_cut      = { fg = "#ff5d62", bg = "#ff5d62" }
+marker_marked   = { fg = "#2afadf", bg = "#2afadf" }
+marker_selected = { fg = "#5ef1ff", bg = "#5ef1ff" }
+
+# count badges
+count_copied   = { fg = "#04110d", bg = "#00d68f" }
+count_cut      = { fg = "#04110d", bg = "#ff5d62" }
+count_selected = { fg = "#04110d", bg = "#5ef1ff" }
+
+# tabs
+tab_active   = { fg = "#04110d", bg = "#00f0c0", bold = true }
+tab_inactive = { fg = "#8af7e4", bg = "#082a23" }
+tab_width    = 1
+
+# borders
+border_symbol = "│"
+border_style  = { fg = "#2b6b60" }
+
+[mode]
+normal_main = { fg = "#04110d", bg = "#00f0c0", bold = true }
+normal_alt  = { fg = "#00f0c0", bg = "#082a23" }
+select_main = { fg = "#04110d", bg = "#b8e994", bold = true }
+select_alt  = { fg = "#b8e994", bg = "#082a23" }
+unset_main  = { fg = "#04110d", bg = "#ff5d62", bold = true }
+unset_alt   = { fg = "#ff5d62", bg = "#082a23" }
+
+[status]
+separator_open  = ""
+separator_close = ""
+separator_style = { fg = "#082a23", bg = "#082a23" }
+perm_type = { fg = "#00f0c0" }
+perm_read = { fg = "#b8e994" }
+perm_write = { fg = "#ff5d62" }
+perm_exec = { fg = "#00d68f" }
+perm_sep = { fg = "#2b6b60" }
+progress_label  = { fg = "#c6fff4", bold = true }
+progress_normal = { fg = "#00f0c0", bg = "#082a23" }
+progress_error  = { fg = "#ff5d62", bg = "#082a23" }
+
+[which]
+cand            = { fg = "#2afadf" }
+rest            = { fg = "#8af7e4" }
+desc            = { fg = "#00d68f" }
+separator       = "  "
+separator_style = { fg = "#2b6b60" }
+mask            = { bg = "#04110d" }
+
+[confirm]
+border     = { fg = "#00f0c0" }
+title      = { fg = "#2afadf", bold = true }
+content    = { fg = "#8af7e4" }
+list       = { fg = "#8af7e4" }
+btn_yes    = { fg = "#04110d", bg = "#00f0c0", bold = true }
+btn_no     = { fg = "#8af7e4" }
+btn_labels = [ " (Y)es ", " (N)o " ]
+
+[spot]
+border = { fg = "#00f0c0" }
+title  = { fg = "#2afadf", bold = true }
+tbl_col = { fg = "#04110d", bg = "#00f0c0" }
+tbl_cell = { fg = "#04110d", bg = "#0d3b33" }
+
+[pick]
+border   = { fg = "#00f0c0" }
+active   = { fg = "#2afadf", bold = true }
+inactive = { fg = "#8af7e4" }
+
+[input]
+border   = { fg = "#00f0c0" }
+title    = { fg = "#2afadf" }
+value    = { fg = "#c6fff4" }
+selected = { reversed = true }
+
+[cmp]
+border   = { fg = "#00f0c0" }
+active   = { fg = "#04110d", bg = "#00f0c0", bold = true }
+inactive = { fg = "#8af7e4" }
+
+[tasks]
+border  = { fg = "#00f0c0" }
+title   = { fg = "#2afadf", bold = true }
+hovered = { fg = "#04110d", bg = "#00f0c0" }
+
+[help]
+on      = { fg = "#2afadf" }
+run     = { fg = "#00d68f" }
+desc    = { fg = "#8af7e4" }
+hovered = { fg = "#04110d", bg = "#00f0c0" }
+footer  = { fg = "#8af7e4", bg = "#082a23" }
+
+[notify]
+title_info  = { fg = "#00d68f" }
+title_warn  = { fg = "#b8e994" }
+title_error = { fg = "#ff5d62" }
+
+[filetype]
+rules = [
+  { mime = "image/*",            fg = "#5ef1ff" },
+  { mime = "{audio,video}/*",    fg = "#b8e994" },
+  { mime = "application/{,g}zip",fg = "#ff5d62" },
+  { mime = "application/x-{tar,bzip*,7z-compressed,xz,rar}", fg = "#ff5d62" },
+  { mime = "application/{pdf,doc,rtf}", fg = "#00d68f" },
+  { url = "*.sh",  fg = "#00d68f" },
+  { url = "*",     fg = "#8af7e4" },
+  { url = "*/",    fg = "#00f0c0", bold = true },
+]

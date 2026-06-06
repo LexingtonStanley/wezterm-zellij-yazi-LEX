@@ -1,0 +1,24 @@
+// loki-dev :: dev layout with a persistent yazi file-browser sidebar.
+// Launch with:  zellij --layout loki-dev
+// Ideal over SSH: you get this machine's files in a pane as soon as you attach.
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="loki" focus=true {
+        pane split_direction="vertical" {
+            // Left sidebar: yazi file browser, scoped to the current dir.
+            pane size="26%" name="  files" {
+                command "yazi"
+            }
+            // Main work pane.
+            pane name="  shell" focus=true
+        }
+    }
+}

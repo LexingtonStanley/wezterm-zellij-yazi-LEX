@@ -1,0 +1,132 @@
+// loki-matrix :: cyan/turquoise "matrix" theme for Zellij 0.44+
+// Full component theme spec so the status ribbons/tabs are properly turquoise
+// (not just the classic 16-colour palette). Colours given as R G B.
+//
+// Drop in ~/.config/zellij/themes/  and set `theme "loki-matrix"` in config.kdl.
+themes {
+    loki-matrix {
+        // --- normal pane text ---
+        text_unselected {
+            base 138 247 228        // #8af7e4 soft turquoise
+            background 4 17 13      // #04110d near-black
+            emphasis_0 42 250 223   // #2afadf neon
+            emphasis_1 0 240 192    // #00f0c0 cyan
+            emphasis_2 0 214 143    // #00d68f green-cyan
+            emphasis_3 94 241 255   // #5ef1ff bright cyan
+        }
+        text_selected {
+            base 198 255 244        // #c6fff4
+            background 13 59 51      // #0d3b33 selection
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        // --- the selected mode/tab ribbon (the bright highlight) ---
+        ribbon_selected {
+            base 4 17 13            // dark text on bright bg
+            background 0 240 192    // #00f0c0 turquoise fill
+            emphasis_0 255 93 98    // #ff5d62 red accent
+            emphasis_1 42 250 223
+            emphasis_2 94 241 255
+            emphasis_3 184 233 148
+        }
+        ribbon_unselected {
+            base 138 247 228
+            background 8 42 35      // #082a23
+            emphasis_0 42 250 223
+            emphasis_1 198 255 244
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        // --- tables (session manager, plugin lists, etc.) ---
+        table_title {
+            base 0 240 192
+            background 0 0 0 0
+            emphasis_0 42 250 223
+            emphasis_1 94 241 255
+            emphasis_2 0 214 143
+            emphasis_3 184 233 148
+        }
+        table_cell_selected {
+            base 198 255 244
+            background 13 59 51
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        table_cell_unselected {
+            base 138 247 228
+            background 4 17 13
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        // --- lists ---
+        list_selected {
+            base 198 255 244
+            background 13 59 51
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        list_unselected {
+            base 138 247 228
+            background 4 17 13
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 0 214 143
+            emphasis_3 94 241 255
+        }
+        // --- pane frames ---
+        frame_selected {
+            base 42 250 223         // neon turquoise border on focused pane
+            background 0 0 0 0
+            emphasis_0 0 240 192
+            emphasis_1 94 241 255
+            emphasis_2 184 233 148
+            emphasis_3 0 214 143
+        }
+        frame_highlight {
+            base 0 240 192
+            background 0 0 0 0
+            emphasis_0 42 250 223
+            emphasis_1 94 241 255
+            emphasis_2 0 214 143
+            emphasis_3 184 233 148
+        }
+        // --- exit codes shown in pane frames ---
+        exit_code_success {
+            base 0 214 143          // green-cyan = ok
+            background 0 0 0 0
+            emphasis_0 42 250 223
+            emphasis_1 0 240 192
+            emphasis_2 94 241 255
+            emphasis_3 184 233 148
+        }
+        exit_code_error {
+            base 255 93 98          // red = error
+            background 0 0 0 0
+            emphasis_0 255 139 143
+            emphasis_1 184 233 148
+            emphasis_2 94 241 255
+            emphasis_3 0 240 192
+        }
+        // --- colours for other users in shared sessions ---
+        multiplayer_user_colors {
+            player_1 0 240 192
+            player_2 94 241 255
+            player_3 184 233 148
+            player_4 42 250 223
+            player_5 0 214 143
+            player_6 198 255 244
+            player_7 255 93 98
+            player_8 138 247 228
+            player_9 94 241 255
+            player_10 0 240 192
+        }
+    }
+}

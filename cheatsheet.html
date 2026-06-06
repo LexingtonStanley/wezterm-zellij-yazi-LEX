@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loki Terminal :: Field Manual</title>
+<style>
+  :root{
+    --bg:#04110d; --bg2:#082a23; --fg:#8af7e4; --fgb:#c6fff4;
+    --cyan:#00f0c0; --neon:#2afadf; --green:#00d68f; --dim:#2b6b60;
+    --red:#ff5d62; --yellow:#b8e994; --blue:#5ef1ff; --sel:#0d3b33;
+    --mono:"JetBrainsMono Nerd Font","JetBrains Mono","Fira Code",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--fg); font-family:var(--mono);
+    font-size:14px; line-height:1.5; min-height:100vh; position:relative;
+  }
+  #matrix{position:fixed;inset:0;z-index:0;opacity:.10;pointer-events:none}
+  .wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:28px 20px 80px}
+  header{text-align:center;margin-bottom:8px}
+  h1{
+    font-size:30px;letter-spacing:3px;margin:0;color:var(--neon);
+    text-shadow:0 0 8px var(--cyan),0 0 22px rgba(0,240,192,.4);
+  }
+  .sub{color:var(--dim);letter-spacing:2px;font-size:12px;margin-top:4px}
+  .toolbar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;
+    justify-content:center;padding:14px 0 18px;background:linear-gradient(var(--bg),var(--bg) 70%,transparent)}
+  #filter{
+    background:var(--bg2);border:1px solid var(--dim);color:var(--fgb);
+    font-family:var(--mono);font-size:14px;padding:9px 14px;border-radius:8px;width:min(460px,80%);
+    outline:none;transition:.15s;
+  }
+  #filter:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,240,192,.25)}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:20px}
+  .chip{font-size:11px;border:1px solid var(--dim);border-radius:20px;padding:3px 11px;color:var(--cyan);
+    cursor:pointer;user-select:none;transition:.15s}
+  .chip:hover,.chip.active{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px;align-items:start}
+  .card{
+    background:rgba(8,42,35,.72);border:1px solid var(--dim);border-radius:12px;
+    padding:0 0 8px;overflow:hidden;backdrop-filter:blur(2px);
+  }
+  .card h2{
+    margin:0;font-size:15px;letter-spacing:1.5px;color:var(--bg);
+    background:linear-gradient(90deg,var(--cyan),var(--green));
+    padding:9px 14px;display:flex;align-items:center;gap:8px;
+  }
+  .card h2 .ico{font-size:16px}
+  .card h2 .note{margin-left:auto;font-size:10px;font-weight:normal;opacity:.8;letter-spacing:.5px}
+  table{width:100%;border-collapse:collapse}
+  tr{border-bottom:1px solid rgba(43,107,96,.3)}
+  tr:last-child{border-bottom:none}
+  tr:hover{background:rgba(0,240,192,.06)}
+  td{padding:5px 14px;vertical-align:top}
+  td.k{white-space:nowrap;width:1%}
+  td.d{color:var(--fg)}
+  .grp{color:var(--neon);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    padding:8px 14px 3px;border-bottom:1px solid rgba(43,107,96,.3)}
+  kbd{
+    font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--neon);
+    border:1px solid var(--dim);border-bottom-width:2px;border-radius:5px;padding:1px 6px;
+    white-space:nowrap;box-shadow:0 1px 0 rgba(0,0,0,.4)
+  }
+  .seq{color:var(--dim)}
+  .loki{color:var(--yellow)}
+  .loki::after{content:" ◂loki";font-size:9px;color:var(--dim);letter-spacing:.5px}
+  code{color:var(--blue);background:rgba(94,241,255,.08);padding:1px 5px;border-radius:4px;font-size:13px}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px}
+  .sw{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--fg)}
+  .dot{width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.15)}
+  .hide{display:none!important}
+  footer{text-align:center;color:var(--dim);font-size:11px;margin-top:30px;letter-spacing:1px}
+  a{color:var(--blue)}
+  .mode-flow{padding:10px 14px;font-size:12px;color:var(--fg)}
+  .mode-flow b{color:var(--neon)}
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<div class="wrap">
+  <header>
+    <h1>◢◤ LOKI TERMINAL ◢◤</h1>
+    <div class="sub">WEZTERM · ZELLIJ · YAZI · TMUX · FZF — cyan-matrix field manual</div>
+  </header>
+
+  <div class="toolbar">
+    <input id="filter" placeholder="  type to filter every shortcut on this page…" autofocus>
+  </div>
+  <div class="legend" id="legend"></div>
+
+  <div class="grid" id="grid">
+
+    <!-- ════════════ ZELLIJ ════════════ -->
+    <div class="card" data-tag="zellij">
+      <h2><span class="ico"></span> ZELLIJ <span class="note">default mode: LOCKED</span></h2>
+      <div class="mode-flow">
+        Starts <b>locked</b> → keys pass through to apps (tmux/vim/yazi).
+        Press <kbd>Ctrl</kbd> <kbd>g</kbd> to take control, then a letter to enter a <b>mode</b>.
+        <kbd>Esc</kbd>/<kbd>Enter</kbd> returns to locked.
+      </div>
+      <div class="grp">Global / always-on (work even when locked)</div>
+      <table>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>g</kbd></td><td class="d">Lock ⇄ control (normal) mode</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>q</kbd></td><td class="d">Quit zellij</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>n</kbd></td><td class="d">New pane</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>←↓↑→</kbd> / <kbd>h j k l</kbd></td><td class="d">Move focus (or switch tab at edge)</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>f</kbd></td><td class="d">Toggle floating panes</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>+</kbd> / <kbd>-</kbd></td><td class="d">Resize focused pane</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>[</kbd> / <kbd>]</kbd></td><td class="d">Previous / next swap layout</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>i</kbd> / <kbd>o</kbd></td><td class="d">Move tab left / right</td></tr>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>y</kbd></td><td class="d">Summon <b>yazi</b> in a floating pane</td></tr>
+      </table>
+      <div class="grp">Pane mode &nbsp;<span class="seq">(<kbd>Ctrl</kbd> <kbd>g</kbd> → <kbd>p</kbd>)</span></div>
+      <table>
+        <tr><td class="k"><kbd>n</kbd> / <kbd>d</kbd> / <kbd>r</kbd></td><td class="d">New pane / split down / split right</td></tr>
+        <tr><td class="k"><kbd>s</kbd></td><td class="d">New stacked pane</td></tr>
+        <tr><td class="k"><kbd>x</kbd></td><td class="d">Close focused pane</td></tr>
+        <tr><td class="k"><kbd>f</kbd></td><td class="d">Toggle fullscreen</td></tr>
+        <tr><td class="k"><kbd>z</kbd></td><td class="d">Toggle pane frames</td></tr>
+        <tr><td class="k"><kbd>w</kbd> / <kbd>e</kbd></td><td class="d">Toggle floating / embed-or-float</td></tr>
+        <tr><td class="k"><kbd>c</kbd> / <kbd>i</kbd></td><td class="d">Rename / pin pane</td></tr>
+        <tr><td class="k loki"><kbd>y</kbd></td><td class="d">Open yazi in a floating pane</td></tr>
+      </table>
+      <div class="grp">Tab mode &nbsp;<span class="seq">(→ <kbd>t</kbd>)</span></div>
+      <table>
+        <tr><td class="k"><kbd>n</kbd> / <kbd>x</kbd> / <kbd>r</kbd></td><td class="d">New / close / rename tab</td></tr>
+        <tr><td class="k"><kbd>1</kbd>–<kbd>9</kbd></td><td class="d">Go to tab N</td></tr>
+        <tr><td class="k"><kbd>[</kbd> / <kbd>]</kbd> / <kbd>b</kbd></td><td class="d">Break pane to new tab (left/right/new)</td></tr>
+        <tr><td class="k"><kbd>s</kbd></td><td class="d">Toggle sync (type to all panes)</td></tr>
+      </table>
+      <div class="grp">Resize <span class="seq">(→ <kbd>r</kbd>)</span> · Move <span class="seq">(→ <kbd>m</kbd>)</span> · Scroll <span class="seq">(→ <kbd>s</kbd>)</span></div>
+      <table>
+        <tr><td class="k"><kbd>h j k l</kbd> / <kbd>+ -</kbd></td><td class="d">Resize: grow; <kbd>H J K L</kbd> shrink</td></tr>
+        <tr><td class="k"><kbd>h j k l</kbd></td><td class="d">Move: shift pane around the grid</td></tr>
+        <tr><td class="k"><kbd>j</kbd>/<kbd>k</kbd> · <kbd>Ctrl</kbd><kbd>f</kbd>/<kbd>b</kbd></td><td class="d">Scroll: line / page</td></tr>
+        <tr><td class="k"><kbd>d</kbd> / <kbd>u</kbd></td><td class="d">Scroll: half page down / up</td></tr>
+        <tr><td class="k"><kbd>e</kbd></td><td class="d">Scroll: edit scrollback in <code>$EDITOR</code></td></tr>
+        <tr><td class="k"><kbd>f</kbd></td><td class="d">Scroll: search the buffer</td></tr>
+      </table>
+      <div class="grp">Session mode <span class="seq">(→ <kbd>o</kbd>)</span></div>
+      <table>
+        <tr><td class="k"><kbd>w</kbd> / <kbd>p</kbd></td><td class="d">Session-manager / plugin-manager</td></tr>
+        <tr><td class="k"><kbd>c</kbd> / <kbd>a</kbd> / <kbd>l</kbd></td><td class="d">Configuration / about / layout-manager</td></tr>
+        <tr><td class="k"><kbd>d</kbd></td><td class="d">Detach session (keeps running)</td></tr>
+      </table>
+      <div class="grp">CLI</div>
+      <table>
+        <tr><td class="k loki"><code>zd</code></td><td class="d">= <code>zellij --layout loki-dev</code> (yazi sidebar)</td></tr>
+        <tr><td class="k loki"><code>za</code></td><td class="d">= <code>zellij --layout loki-agent</code> (+ tmux monitor)</td></tr>
+        <tr><td class="k"><code>zellij ls</code></td><td class="d">List sessions</td></tr>
+        <tr><td class="k"><code>zellij a [name]</code></td><td class="d">Attach to (last) session</td></tr>
+      </table>
+    </div>
+
+    <!-- ════════════ NESTED ZELLIJ ════════════ -->
+    <div class="card" data-tag="zellij nested nesting ssh remote">
+      <h2><span class="ico"></span> NESTED ZELLIJ <span class="note">local ⊃ ssh ⊃ zellij</span></h2>
+      <div class="mode-flow">
+        Open zellij locally, SSH into another box, run a zellij there → the
+        <b>outer</b> (local) session grabs <kbd>Ctrl</kbd><kbd>g</kbd>, so the
+        <b>inner</b> (remote) one never sees it. Fix: start the inner one with
+        <code>zin</code>, which uses <kbd>Ctrl</kbd><kbd>o</kbd> as its control key.
+      </div>
+      <table>
+        <tr><td class="k loki"><code>zin</code></td><td class="d">Start the <b>inner/remote</b> zellij (control = <kbd>Ctrl</kbd><kbd>o</kbd>)</td></tr>
+        <tr><td class="k loki"><code>zind</code></td><td class="d">…same, with the <code>loki-dev</code> yazi-sidebar layout</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>g</kbd></td><td class="d">Controls the <b>outer</b> (local) zellij — as always</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>o</kbd></td><td class="d">Passes through the outer → controls the <b>inner</b> (remote) zellij</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>b</kbd></td><td class="d">Passes through both → controls <b>tmux</b> at any depth</td></tr>
+      </table>
+      <div class="grp">Driving the inner session</div>
+      <table>
+        <tr><td class="k"><kbd>Ctrl</kbd><kbd>o</kbd> → <kbd>p</kbd>/<kbd>t</kbd>/<kbd>r</kbd>…</td><td class="d">Take control of inner, then use mode keys normally</td></tr>
+        <tr><td class="k"><kbd>Esc</kbd></td><td class="d">Inner back to locked (passes straight through)</td></tr>
+      </table>
+      <div class="mode-flow">Caveat: the outer eats the <kbd>Alt</kbd><kbd>*</kbd> shortcuts (incl. <kbd>Alt</kbd><kbd>y</kbd>) in locked mode, so on the inner session use <b>mode-based</b> keys (<kbd>Ctrl</kbd><kbd>o</kbd> then <kbd>p</kbd>…) rather than the Alt combos. Three layers max stay distinct: outer <kbd>Ctrl</kbd><kbd>g</kbd> · inner <kbd>Ctrl</kbd><kbd>o</kbd> · tmux <kbd>Ctrl</kbd><kbd>b</kbd>.</div>
+    </div>
+
+    <!-- ════════════ WEZTERM ════════════ -->
+    <div class="card" data-tag="wezterm">
+      <h2><span class="ico"></span> WEZTERM <span class="note">leader: Ctrl-a</span></h2>
+      <div class="mode-flow">Leader = <kbd>Ctrl</kbd> <kbd>a</kbd> (chosen so it never clashes with zellij <kbd>Ctrl</kbd><kbd>g</kbd> or tmux <kbd>Ctrl</kbd><kbd>b</kbd> when nested). Press leader, release, then the key.</div>
+      <div class="grp">Leader chords</div>
+      <table>
+        <tr><td class="k loki"><span class="seq">L</span> <kbd>y</kbd></td><td class="d">Open <b>yazi</b> in a new tab</td></tr>
+        <tr><td class="k loki"><span class="seq">L</span> <kbd>z</kbd></td><td class="d">Open <b>zellij</b> in a new tab</td></tr>
+        <tr><td class="k"><span class="seq">L</span> <kbd>\</kbd> / <kbd>-</kbd></td><td class="d">Split horizontally / vertically</td></tr>
+        <tr><td class="k"><span class="seq">L</span> <kbd>c</kbd> / <kbd>x</kbd></td><td class="d">New tab / close pane</td></tr>
+        <tr><td class="k"><span class="seq">L</span> <kbd>f</kbd></td><td class="d">Toggle fullscreen</td></tr>
+        <tr><td class="k"><span class="seq">L</span> <kbd>[</kbd></td><td class="d">Enter copy mode</td></tr>
+      </table>
+      <div class="grp">Direct</div>
+      <table>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd></td><td class="d">Font size up / down / reset</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd><kbd>Alt</kbd> <kbd>1</kbd>–<kbd>9</kbd></td><td class="d">Jump to tab N</td></tr>
+        <tr><td class="k"><kbd>Shift</kbd> <kbd>PgUp</kbd>/<kbd>PgDn</kbd></td><td class="d">Scroll viewport</td></tr>
+      </table>
+      <div class="mode-flow"><span class="seq">L</span> = press the leader first. Inside zellij, let zellij drive splits — use WezTerm tabs for separate sessions/SSH targets.</div>
+    </div>
+
+    <!-- ════════════ YAZI ════════════ -->
+    <div class="card" data-tag="yazi">
+      <h2><span class="ico"></span> YAZI <span class="note">file browser</span></h2>
+      <div class="grp">Navigate</div>
+      <table>
+        <tr><td class="k"><kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd></td><td class="d">Parent dir · down · up · enter/open</td></tr>
+        <tr><td class="k"><kbd>g</kbd> <kbd>g</kbd> / <kbd>G</kbd></td><td class="d">Top / bottom</td></tr>
+        <tr><td class="k"><kbd>.</kbd></td><td class="d">Toggle hidden files</td></tr>
+        <tr><td class="k"><kbd>z</kbd> / <kbd>Z</kbd></td><td class="d">Jump via zoxide / fzf</td></tr>
+        <tr><td class="k"><kbd>Tab</kbd></td><td class="d">Toggle preview / spot pane</td></tr>
+      </table>
+      <div class="grp">Select &amp; act</div>
+      <table>
+        <tr><td class="k"><kbd>Space</kbd> / <kbd>v</kbd></td><td class="d">Toggle select / visual select</td></tr>
+        <tr><td class="k"><kbd>y</kbd> / <kbd>x</kbd> / <kbd>p</kbd></td><td class="d">Yank (copy) / cut / paste</td></tr>
+        <tr><td class="k"><kbd>d</kbd> / <kbd>D</kbd></td><td class="d">Trash / delete permanently</td></tr>
+        <tr><td class="k"><kbd>a</kbd> / <kbd>r</kbd></td><td class="d">Create (end <code>/</code> = dir) / rename</td></tr>
+        <tr><td class="k"><kbd>o</kbd> / <kbd>O</kbd></td><td class="d">Open / open-with chooser</td></tr>
+      </table>
+      <div class="grp">Find</div>
+      <table>
+        <tr><td class="k"><kbd>/</kbd> · <kbd>n</kbd>/<kbd>N</kbd></td><td class="d">Search names · next/prev</td></tr>
+        <tr><td class="k"><kbd>s</kbd></td><td class="d">Search by file <b>content</b> (rg)</td></tr>
+        <tr><td class="k"><kbd>f</kbd></td><td class="d">Filter current dir</td></tr>
+        <tr><td class="k"><kbd>t</kbd> · <kbd>[</kbd>/<kbd>]</kbd></td><td class="d">New yazi tab · prev/next tab</td></tr>
+        <tr><td class="k"><kbd>q</kbd> / <kbd>~</kbd></td><td class="d">Quit (cd on exit) / help</td></tr>
+      </table>
+      <div class="mode-flow loki">In zellij: <kbd>Alt</kbd><kbd>y</kbd> (anywhere) or pane-mode <kbd>y</kbd>, or shell alias <code>yz</code>.</div>
+    </div>
+
+    <!-- ════════════ TMUX ════════════ -->
+    <div class="card" data-tag="tmux">
+      <h2><span class="ico"></span> TMUX <span class="note">prefix: Ctrl-b · agent comms</span></h2>
+      <div class="mode-flow">Runs <b>inside a zellij pane</b> for live-monitoring inter-agent chat. Zellij's locked mode passes <kbd>Ctrl</kbd><kbd>b</kbd> straight through, so tmux behaves normally. Prefix = <kbd>Ctrl</kbd><kbd>b</kbd>, release, then key.</div>
+      <div class="grp">Sessions / CLI</div>
+      <table>
+        <tr><td class="k"><code>tmux ls</code></td><td class="d">List sessions</td></tr>
+        <tr><td class="k loki"><code>tmux attach -t agents</code></td><td class="d">Attach the agent-comms session</td></tr>
+        <tr><td class="k"><code>tmux new -s agents</code></td><td class="d">Create it if missing</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>d</kbd></td><td class="d">Detach (leaves it running)</td></tr>
+      </table>
+      <div class="grp">Windows / panes</div>
+      <table>
+        <tr><td class="k"><span class="seq">P</span> <kbd>c</kbd> / <kbd>,</kbd></td><td class="d">New window / rename</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>"</kbd> / <kbd>%</kbd></td><td class="d">Split horizontal / vertical</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>o</kbd> / <kbd>←↓↑→</kbd></td><td class="d">Move between panes</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>n</kbd>/<kbd>p</kbd> · <kbd>0</kbd>–<kbd>9</kbd></td><td class="d">Next/prev window · go to N</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>z</kbd></td><td class="d">Zoom pane (toggle)</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>[</kbd></td><td class="d">Copy/scroll mode (<kbd>q</kbd> exits)</td></tr>
+        <tr><td class="k"><span class="seq">P</span> <kbd>x</kbd> / <kbd>&amp;</kbd></td><td class="d">Kill pane / window</td></tr>
+      </table>
+      <div class="mode-flow"><span class="seq">P</span> = press prefix <kbd>Ctrl</kbd><kbd>b</kbd> first.</div>
+    </div>
+
+    <!-- ════════════ FZF ════════════ -->
+    <div class="card" data-tag="fzf shell">
+      <h2><span class="ico"></span> FZF <span class="note">fuzzy finder</span></h2>
+      <div class="grp">Shell keybindings</div>
+      <table>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>r</kbd></td><td class="d">Fuzzy-search command history</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>t</kbd></td><td class="d">Pick file/dir → insert path (bat preview)</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>c</kbd></td><td class="d">Fuzzy <code>cd</code> into a subdirectory</td></tr>
+        <tr><td class="k"><code>cmd **</code><kbd>Tab</kbd></td><td class="d">Fuzzy completion, e.g. <code>vim **</code><kbd>Tab</kbd></td></tr>
+        <tr><td class="k"><code>ssh **</code><kbd>Tab</kbd></td><td class="d">Fuzzy-complete hosts</td></tr>
+      </table>
+      <div class="grp">Inside the fzf picker</div>
+      <table>
+        <tr><td class="k"><kbd>Tab</kbd></td><td class="d">Multi-select (mark) an entry</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd><kbd>j</kbd>/<kbd>k</kbd> · <kbd>↑↓</kbd></td><td class="d">Move cursor</td></tr>
+        <tr><td class="k"><kbd>Enter</kbd> / <kbd>Esc</kbd></td><td class="d">Accept / cancel</td></tr>
+      </table>
+    </div>
+
+    <!-- ════════════ SHELL ════════════ -->
+    <div class="card" data-tag="shell aliases">
+      <h2><span class="ico"></span> SHELL SUGAR <span class="note">loki-shell.sh</span></h2>
+      <div class="grp">Navigation &amp; listing</div>
+      <table>
+        <tr><td class="k"><code>z foo</code></td><td class="d">zoxide smart-jump to frecent dir (replaces <code>cd</code>)</td></tr>
+        <tr><td class="k"><code>cdi</code></td><td class="d">zoxide interactive picker</td></tr>
+        <tr><td class="k"><code>ls</code> <code>ll</code> <code>la</code> <code>l</code></td><td class="d">eza w/ icons+git (long / all / one-col)</td></tr>
+        <tr><td class="k"><code>lt</code> / <code>ltt</code></td><td class="d">eza tree, 2 / 4 levels deep</td></tr>
+        <tr><td class="k"><code>..</code> <code>...</code> <code>....</code></td><td class="d">Up 1 / 2 / 3 directories</td></tr>
+      </table>
+      <div class="grp">View / search</div>
+      <table>
+        <tr><td class="k"><code>cat f</code> / <code>bat f</code></td><td class="d">Syntax-highlighted view (batcat)</td></tr>
+        <tr><td class="k"><code>help cmd</code></td><td class="d"><code>cmd --help</code> through bat</td></tr>
+        <tr><td class="k"><code>man cmd</code></td><td class="d">Colourised man pages (bat pager)</td></tr>
+        <tr><td class="k"><code>rg pat</code></td><td class="d">ripgrep, smart-case</td></tr>
+      </table>
+      <div class="grp loki">Loki shortcuts</div>
+      <table>
+        <tr><td class="k loki"><code>yz</code></td><td class="d">yazi floating pane (in zellij) / plain yazi</td></tr>
+        <tr><td class="k loki"><code>zd</code> / <code>za</code></td><td class="d">zellij dev / agent layout</td></tr>
+      </table>
+    </div>
+
+    <!-- ════════════ SETUP / PORTING ════════════ -->
+    <div class="card" data-tag="setup port install">
+      <h2><span class="ico"></span> PORTING <span class="note">~/.loki-term</span></h2>
+      <div class="mode-flow">Everything lives in <code>~/.loki-term</code>. To replicate on any machine:</div>
+      <table>
+        <tr><td class="k"><kbd>1</kbd></td><td class="d"><code>scp -r ~/.loki-term you@box:~/</code> &nbsp;(or git clone)</td></tr>
+        <tr><td class="k"><kbd>2</kbd></td><td class="d"><code>~/.loki-term/install.sh</code> — installs tools + links configs</td></tr>
+        <tr><td class="k"><kbd>3</kbd></td><td class="d"><code>source ~/.bashrc</code> (or open a new shell)</td></tr>
+      </table>
+      <div class="grp">install.sh flags</div>
+      <table>
+        <tr><td class="k"><code>--no-tools</code></td><td class="d">Only symlink configs (tools already present)</td></tr>
+        <tr><td class="k"><code>--tools-only</code></td><td class="d">Only install packages, don't touch dotfiles</td></tr>
+      </table>
+      <div class="mode-flow">Backs up anything it replaces to <code>&lt;file&gt;.pre-loki.&lt;timestamp&gt;</code>. Needs a Nerd Font for icons (JetBrainsMono is bundled by the installer).</div>
+      <div class="grp">Files</div>
+      <table>
+        <tr><td class="k"><code>wezterm/wezterm.lua</code></td><td class="d">→ <code>~/.wezterm.lua</code></td></tr>
+        <tr><td class="k"><code>zellij/</code></td><td class="d">config + loki-matrix theme + layouts</td></tr>
+        <tr><td class="k"><code>yazi/</code></td><td class="d">theme.toml + yazi.toml</td></tr>
+        <tr><td class="k"><code>starship/starship.toml</code></td><td class="d">→ <code>~/.config/starship.toml</code></td></tr>
+        <tr><td class="k"><code>shell/loki-shell.sh</code></td><td class="d">sourced from <code>~/.bashrc</code></td></tr>
+      </table>
+    </div>
+
+    <!-- ════════════ PALETTE ════════════ -->
+    <div class="card" data-tag="palette colors theme">
+      <h2><span class="ico"></span> PALETTE <span class="note">cyan-matrix</span></h2>
+      <div class="swatches" id="swatches"></div>
+      <div class="mode-flow">One palette shared across WezTerm, Zellij, Yazi, fzf and the prompt — edit a colour in one place and re-link to roll it everywhere.</div>
+    </div>
+
+  </div>
+  <footer>◢◤ Loki cyber-lab · the machine is yours · stay turquoise ◢◤</footer>
+</div>
+
+<script>
+// ---- live filter ----
+const filter = document.getElementById('filter');
+const cards = [...document.querySelectorAll('.card')];
+function applyFilter(q){
+  q = q.trim().toLowerCase();
+  cards.forEach(card=>{
+    let anyRow=false;
+    const rows=[...card.querySelectorAll('tr')];
+    rows.forEach(r=>{
+      const hit = !q || r.textContent.toLowerCase().includes(q);
+      r.classList.toggle('hide',!hit);
+      if(hit) anyRow=true;
+    });
+    const tagHit = card.dataset.tag && card.dataset.tag.includes(q);
+    card.classList.toggle('hide', !(anyRow|| (!rows.length) || tagHit) );
+  });
+}
+filter.addEventListener('input',e=>applyFilter(e.target.value));
+
+// ---- section chips ----
+const legend=document.getElementById('legend');
+[['zellij','ZELLIJ'],['nested','NEST'],['wezterm','WEZTERM'],['yazi','YAZI'],['tmux','TMUX'],['fzf','FZF'],['shell','SHELL'],['setup','PORTING'],['palette','PALETTE'],['','ALL']]
+.forEach(([tag,label])=>{
+  const c=document.createElement('span');c.className='chip';c.textContent=label;
+  c.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    if(tag){c.classList.add('active');filter.value='';
+      cards.forEach(card=>card.classList.toggle('hide',!card.dataset.tag.includes(tag)));
+      cards.forEach(card=>card.querySelectorAll('tr').forEach(r=>r.classList.remove('hide')));
+    } else {filter.value='';applyFilter('');}
+  };
+  legend.appendChild(c);
+});
+
+// ---- palette swatches ----
+const pal=[['bg','#04110d'],['bg2','#082a23'],['fg','#8af7e4'],['fg+','#c6fff4'],
+['cyan','#00f0c0'],['neon','#2afadf'],['green','#00d68f'],['blue','#5ef1ff'],
+['yellow','#b8e994'],['red','#ff5d62'],['dim','#2b6b60'],['sel','#0d3b33']];
+const sw=document.getElementById('swatches');
+pal.forEach(([n,h])=>{const d=document.createElement('div');d.className='sw';
+  d.innerHTML=`<span class="dot" style="background:${h}"></span>${n} <span style="color:var(--dim)">${h}</span>`;
+  sw.appendChild(d);});
+
+// ---- matrix rain (cyan) ----
+const cv=document.getElementById('matrix'),ctx=cv.getContext('2d');
+let cols,drops;const glyphs='アカサタナハマヤラワ0123456789ABCDEF<>/{}[]#$%&*+=';
+function resize(){cv.width=innerWidth;cv.height=innerHeight;cols=Math.floor(cv.width/14);
+  drops=Array(cols).fill(0).map(()=>Math.random()*-100);}
+addEventListener('resize',resize);resize();
+function draw(){
+  ctx.fillStyle='rgba(4,17,13,0.10)';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.font='14px monospace';
+  for(let i=0;i<cols;i++){
+    const ch=glyphs[Math.floor(Math.random()*glyphs.length)];
+    const x=i*14,y=drops[i]*14;
+    ctx.fillStyle= Math.random()>0.975 ? '#c6fff4' : '#00f0c0';
+    ctx.fillText(ch,x,y);
+    if(y>cv.height&&Math.random()>0.975)drops[i]=0;
+    drops[i]++;
+  }
+}
+setInterval(draw,55);
+</script>
+</body>
+</html>

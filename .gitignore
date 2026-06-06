@@ -1,0 +1,9 @@
+# pre-install backups (created by install.sh)
+*.pre-loki.*
+# editor / OS cruft
+*.swp
+*.swo
+*~
+.DS_Store
+# generated at install time from config.kdl, not tracked
+config-nested.kdl

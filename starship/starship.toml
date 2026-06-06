@@ -1,0 +1,97 @@
+# Loki starship prompt :: cyan/turquoise matrix
+# Part of ~/.loki-term. Symlinked to ~/.config/starship.toml by install.sh.
+# Needs a Nerd Font (you have JetBrainsMono Nerd Font) for the glyphs.
+
+add_newline = true
+command_timeout = 800
+
+format = """
+[╭─](#2b6b60)$os$username$hostname$directory$git_branch$git_status$nodejs$python$rust$cmd_duration
+[╰─](#2b6b60)$character"""
+
+palette = "matrix"
+
+[palettes.matrix]
+bg    = "#04110d"
+fg    = "#8af7e4"
+cyan  = "#00f0c0"
+neon  = "#2afadf"
+green = "#00d68f"
+dim   = "#2b6b60"
+red   = "#ff5d62"
+yellow= "#b8e994"
+blue  = "#5ef1ff"
+
+[character]
+success_symbol = "[❯](bold neon)"
+error_symbol   = "[❯](bold red)"
+vimcmd_symbol  = "[❮](bold cyan)"
+
+[os]
+disabled = false
+style = "neon"
+format = "[$symbol](fg)"
+[os.symbols]
+Debian = " "
+Ubuntu = " "
+Arch = " "
+Fedora = " "
+Macos = " "
+Linux = " "
+Windows = " "
+
+[username]
+show_always = true
+style_user = "bold cyan"
+style_root = "bold red"
+format = "[$user]($style)"
+
+[hostname]
+ssh_only = false
+ssh_symbol = " "
+style = "neon"
+format = "[@$hostname]($style) "
+
+[directory]
+style = "bold blue"
+truncation_length = 4
+truncate_to_repo = true
+read_only = " "
+format = "[ $path]($style)[$read_only](red) "
+
+[git_branch]
+symbol = " "
+style = "green"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "yellow"
+format = "([$all_status$ahead_behind]($style)) "
+conflicted = "="
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕"
+untracked = "?${count}"
+modified = "!${count}"
+staged = "+${count}"
+stashed = "≡"
+
+[cmd_duration]
+min_time = 2000
+style = "dim"
+format = "[ $duration]($style)"
+
+[nodejs]
+symbol = " "
+style = "green"
+format = "[$symbol($version)]($style) "
+
+[python]
+symbol = " "
+style = "yellow"
+format = "[$symbol($version)]($style) "
+
+[rust]
+symbol = " "
+style = "red"
+format = "[$symbol($version)]($style) "
