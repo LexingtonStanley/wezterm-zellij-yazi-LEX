@@ -44,7 +44,7 @@ if (Get-Module -ListAvailable -Name PSFzf -ErrorAction SilentlyContinue) {
 try {
   Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
   try { Set-PSReadLineOption -PredictionViewStyle InlineView } catch {}
-  try { Set-PSReadLineOption -Colors @{ InlinePrediction = "$([char]0x1b)[38;2;43;107;96m" } } catch {}  # dim teal, matches ble.sh
+  try { Set-PSReadLineOption -Colors @{ InlinePrediction = "#2b6b60" } } catch {}  # dim teal, matches ble.sh
 } catch {}
 
 # -- listings: eza with icons + git (ll / la / lt), else fall back to dir ----

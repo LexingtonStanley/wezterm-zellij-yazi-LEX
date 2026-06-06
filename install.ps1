@@ -139,17 +139,29 @@ if (-not $SkipTools) {
 }
 
 # -- 5. Wire loki-shell.ps1 into the PowerShell profile (prompt + aliases) --
-$profilePath = $PROFILE.CurrentUserAllHosts
-$profileDir  = Split-Path $profilePath -Parent
-New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+# Windows PowerShell 5.1 and PowerShell 7 (pwsh) keep SEPARATE profile files.
+# WezTerm prefers pwsh, so wire BOTH AllHosts profiles - otherwise running this
+# from one edition silently leaves the other (often the one WezTerm opens)
+# without the prompt/aliases/autosuggestions. The pwsh path is derived from the
+# Documents folder so it's correct even when this runs under 5.1.
 $lokiLine = ". `"$RepoDir\shell\loki-shell.ps1`""
 $marker   = "loki-shell.ps1"
-$already  = (Test-Path $profilePath) -and (Select-String -Path $profilePath -SimpleMatch $marker -Quiet)
-if ($already) {
-  Ok "PowerShell profile already sources loki-shell.ps1"
-} else {
-  Add-Content -Path $profilePath -Value "`n# Loki terminal (added by install.ps1)`n$lokiLine`n"
-  Ok "hooked loki-shell.ps1 into $profilePath"
+$docs     = [Environment]::GetFolderPath('MyDocuments')
+$profiles = @(
+  $PROFILE.CurrentUserAllHosts                       # the edition running this script
+  Join-Path $docs 'WindowsPowerShell\profile.ps1'    # Windows PowerShell 5.1
+  Join-Path $docs 'PowerShell\profile.ps1'           # PowerShell 7 (pwsh)
+) | Select-Object -Unique
+foreach ($profilePath in $profiles) {
+  $profileDir = Split-Path $profilePath -Parent
+  New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+  $already = (Test-Path $profilePath) -and (Select-String -Path $profilePath -SimpleMatch $marker -Quiet)
+  if ($already) {
+    Ok "PowerShell profile already sources loki-shell.ps1: $profilePath"
+  } else {
+    Add-Content -Path $profilePath -Value "`n# Loki terminal (added by install.ps1)`n$lokiLine`n"
+    Ok "hooked loki-shell.ps1 into $profilePath"
+  }
 }
 
 # -- 6. Optional: the WSL Linux stack (only with -WithWsl) -----------------
