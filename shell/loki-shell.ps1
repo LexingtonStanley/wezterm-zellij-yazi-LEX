@@ -127,20 +127,39 @@ if (_have claude)   { function cl { claude @args } }
 # still works. (loki-agent has a tmux pane — tmux has no native Windows build,
 # so that one pane is a no-op on native Windows; loki-dev's yazi sidebar works.)
 if (_have zellij) {
+  # Resolve the real zellij.exe (CommandType Application) so the wrapper below can
+  # call it without recursing into itself.
+  function global:_LokiZjExe { (Get-Command zellij -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source }
+  function global:_LokiZjNestedCfg { Join-Path $env:LOCALAPPDATA "loki-zellij\config-nested.kdl" }
+
+  # Auto-nesting: wrap `zellij` so zellij-in-zellij "just works". When we're
+  # already INSIDE a session ($env:ZELLIJ is set) and starting a NEW one, use
+  # config-nested.kdl, whose control key is Ctrl-o -- so the inner session never
+  # collides with the outer's Ctrl-g. Outside a session it's plain zellij (the
+  # outer config via ZELLIJ_CONFIG_FILE, control = Ctrl-g). Ctrl-b still passes
+  # through every locked layer to tmux. Session-management subcommands (attach,
+  # ls, kill, action, ...) are passed through untouched -- only new sessions nest.
+  # install.ps1 generates config-nested.kdl (= the loki config, Ctrl-g -> Ctrl-o,
+  # + default_shell pwsh). zin/zind below force the nested config explicitly.
+  function zellij {
+    $exe = _LokiZjExe
+    if (-not $exe) { Write-Error "zellij not found on PATH"; return }
+    $nested = _LokiZjNestedCfg
+    $sub = @($args | Where-Object { $_ -notlike '-*' })[0]
+    $mgmt = @('attach','a','list-sessions','ls','list-aliases','kill-session','k',
+              'kill-all-sessions','delete-session','delete-all-sessions','da','setup',
+              'options','action','run','r','plugin','edit','e','convert-config','pipe')
+    $isNewSession = -not ($sub -and ($mgmt -contains $sub))
+    if ($env:ZELLIJ -and $isNewSession -and (Test-Path $nested)) { & $exe --config $nested @args }
+    else { & $exe @args }
+  }
+  # zd/za go through the wrapper, so they auto-nest too when run inside a session.
   function zd { zellij --layout loki-dev @args }
   function za { zellij --layout loki-agent @args }
-  # Nested zellij-in-zellij: the inner session's control key is Ctrl-o (the outer
-  # stays Ctrl-g) so the two layers never clash -- same scheme as the Linux side.
-  # install.ps1 generates config-nested.kdl (= the loki config with Ctrl-g ->
-  # Ctrl-o, + default_shell pwsh) next to the outer Windows config; zin/zind point
-  # at it. For the classic local-outer + SSH-remote-inner flow you'd run `zin` on
-  # the REMOTE box; these cover nesting locally on native Windows. (Ctrl-b still
-  # passes through every locked layer to tmux, as documented in the cheatsheet.)
-  $_lokiZjNested = Join-Path $env:LOCALAPPDATA "loki-zellij\config-nested.kdl"
-  if (Test-Path $_lokiZjNested) {
-    function zin  { zellij --config (Join-Path $env:LOCALAPPDATA "loki-zellij\config-nested.kdl") @args }
-    function zind { zellij --config (Join-Path $env:LOCALAPPDATA "loki-zellij\config-nested.kdl") --layout loki-dev @args }
-  }
+  # Explicit nested launchers -- force the inner (Ctrl-o) config regardless of
+  # context (e.g. driving a remote box, or nesting from a non-zellij shell).
+  function zin  { $exe = _LokiZjExe; & $exe --config (_LokiZjNestedCfg) @args }
+  function zind { $exe = _LokiZjExe; & $exe --config (_LokiZjNestedCfg) --layout loki-dev @args }
 } elseif (_have wsl) {
   function zd { wsl.exe -e bash -lic "zd" }
   function za { wsl.exe -e bash -lic "za" }
