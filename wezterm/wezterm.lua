@@ -11,12 +11,12 @@ local config = wezterm.config_builder and wezterm.config_builder() or {}
 ------------------------------------------------------------------------
 -- PLATFORM DETECTION
 -- One config for Linux / macOS / Windows. On Windows, WezTerm runs NATIVELY
--- and opens native PowerShell by default — so claude, git, yazi, eza, bat …
--- (the tools on your Windows PATH) all just work, with a real C:\ / Q:\ prompt.
--- zellij has no native Windows build, so the one Linux-only convenience
--- (LEADER-z) still launches it inside WSL on demand.
+-- and opens native PowerShell by default — so claude, git, yazi, eza, bat,
+-- and zellij (native on Windows since 0.44) all just work from your Windows
+-- PATH, with a real C:\ / Q:\ prompt. LEADER-z launches native zellij.
 --
--- Prefer the old "boot straight into WSL" behaviour? Flip WIN_USE_WSL = true.
+-- Prefer the old "boot straight into WSL" behaviour (or no native zellij on a
+-- given box)? Flip WIN_USE_WSL = true and LEADER-z routes through WSL instead.
 ------------------------------------------------------------------------
 local triple = wezterm.target_triple
 local is_windows = triple:find("windows") ~= nil
@@ -166,13 +166,17 @@ config.window_frame = {
 ------------------------------------------------------------------------
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
-  -- Pop open yazi (file browser) in a new tab. Native everywhere (incl. Windows);
-  -- only routed through WSL when WIN_USE_WSL = true.
+  -- Pop open yazi in a new LOCAL tab (Ctrl-a then y). Native everywhere (incl.
+  -- Windows); only routed through WSL when WIN_USE_WSL = true.
+  -- NOTE: the everyday yazi shortcut is Alt-k, bound at the SHELL level
+  -- (loki-shell.sh / loki-shell.ps1) so it opens yazi in the CURRENT pane and
+  -- works over SSH (Alt-k inside an SSH session opens yazi on the remote box).
+  -- wezterm deliberately does NOT bind Alt-k — it forwards it to the shell.
   { key = "y", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("yazi") }) },
-  -- Launch / attach a zellij session in a new tab. zellij has no native Windows
-  -- build, so on native Windows it always opens inside WSL; native elsewhere.
-  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({
-      args = (is_windows and not WIN_USE_WSL) and wsl_cmd("zellij") or run_cmd("zellij") }) },
+  -- Launch / attach a zellij session in a new tab. Native everywhere now
+  -- (zellij gained a native Windows build in 0.44); run_cmd() routes it through
+  -- WSL only when WIN_USE_WSL = true.
+  { key = "z", mods = "LEADER", action = act.SpawnCommandInNewTab({ args = run_cmd("zellij") }) },
   -- Splits (only relevant when used WITHOUT zellij — inside zellij let zellij drive).
   { key = "\\", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
   { key = "-",  mods = "LEADER", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
@@ -218,6 +222,10 @@ end
 ------------------------------------------------------------------------
 config.term = "xterm-256color"  -- safe default; wezterm's own terminfo also works
 config.front_end = "WebGpu"     -- crisp GPU rendering; falls back automatically
+-- Treat left-Alt as Meta so chords like Alt-k send ESC+k (\ek) to the shell,
+-- which is what the readline / ble.sh / PSReadLine yazi binding listens for —
+-- locally AND through SSH. (Right-Alt stays composing for accented chars.)
+config.send_composed_key_when_left_alt_is_pressed = false
 config.warn_about_missing_glyphs = false
 config.adjust_window_size_when_changing_font_size = false
 

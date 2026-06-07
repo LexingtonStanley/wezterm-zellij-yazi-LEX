@@ -173,7 +173,11 @@ keybinds clear-defaults=true {
         bind "Alt h" { MoveFocusOrTab "left"; }
         bind "Alt i" { MoveTab "left"; }
         bind "Alt j" { MoveFocus "down"; }
-        bind "Alt k" { MoveFocus "up"; }
+        // [LOKI] Alt-k is intentionally LEFT UNBOUND so it falls through every
+        // zellij layer to the focused shell, whose binding opens yazi (see
+        // loki-shell.sh). That's what makes Alt-k → yazi work even nested over
+        // SSH: outer + inner zellij both pass it down to the remote shell.
+        // (Move focus up is still on Alt-↑ and in pane/scroll modes.)
         bind "Alt l" { MoveFocusOrTab "right"; }
         bind "Alt n" { NewPane; }
         bind "Alt o" { MoveTab "right"; }

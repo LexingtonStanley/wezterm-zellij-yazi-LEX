@@ -105,6 +105,35 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init bash --cmd cd)"   # replaces `cd`; use `cdi` for interactive pick
 fi
 
+# ── yazi (file manager: Alt-k pops it open; quits back to its last dir) ───
+# `y` wraps yazi so that quitting (q) drops you in whatever directory you
+# browsed to — yazi writes its cwd to a temp file and we cd into it.
+#
+# The Alt-k binding lives in the SHELL, not in wezterm — and that's deliberate:
+# it's what makes yazi work "over SSH passthrough". wezterm just forwards the
+# Alt-k bytes (ESC k) to whichever shell has focus, so pressing Alt-k inside an
+# SSH session fires the REMOTE box's binding and opens yazi on the REMOTE
+# filesystem. A wezterm-level binding would instead always open yazi locally.
+if command -v yazi >/dev/null 2>&1; then
+  y() {
+    local tmp cwd
+    tmp="$(mktemp -t yazi-cwd.XXXXXX)" || { yazi "$@"; return; }
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(command cat -- "$tmp" 2>/dev/null)" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+      builtin cd -- "$cwd" || true
+    fi
+    rm -f -- "$tmp"
+  }
+  # Bind Alt-k → y. ble.sh owns the keymap when it's loaded, so use its binder
+  # (`-c` hands the terminal cleanly to the full-screen TUI and redraws the
+  # prompt on exit); otherwise fall back to plain readline (\ek = Alt-k).
+  if [[ ${BLE_VERSION-} ]]; then
+    ble-bind -c 'M-k' 'y'
+  else
+    bind -x '"\ek": y' 2>/dev/null
+  fi
+fi
+
 # ── handy aliases ───────────────────────────────────────────────────────
 alias yz='zellij action new-pane --floating --close-on-exit -- yazi 2>/dev/null || yazi'  # yazi pane in zellij, else plain
 alias zd='zellij --layout loki-dev'      # dev layout w/ yazi sidebar

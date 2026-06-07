@@ -21,13 +21,29 @@ Flags: `--no-tools` (link configs only) · `--tools-only` (install packages only
 ## Windows (native)
 
 On Windows everything runs **natively**: WezTerm opens **native PowerShell** in your
-project dir, and `claude`, `git`, `yazi`, `eza`, `bat`, `lazygit` … (the tools on your
-Windows PATH) all just work — with a real `C:\` / `Q:\` prompt. `wezterm.lua` is
-OS-aware and picks `pwsh` (PowerShell 7) if installed, else Windows PowerShell.
+project dir, and `claude`, `git`, `yazi`, `eza`, `bat`, `lazygit`, **`zellij`** … (the
+tools on your Windows PATH) all just work — with a real `C:\` / `Q:\` prompt.
+`wezterm.lua` is OS-aware and picks `pwsh` (PowerShell 7) if installed, else Windows
+PowerShell.
 
-The one exception is **zellij**, which has no native Windows build. It stays in WSL and
-is reachable on demand: press **`LEADER-z`** (`Ctrl-a` then `z`) in WezTerm, or run
-`zd` / `za` from PowerShell.
+**zellij is native on Windows since 0.44.** `install.ps1` fetches the **latest** build
+straight from GitHub releases (winget lags), drops `zellij.exe` in
+`%LOCALAPPDATA%\Zellij`, and puts it on PATH. `loki-shell.ps1` points it at the shared
+config via `ZELLIJ_CONFIG_DIR`, so you get the same cyan-matrix theme + `loki-dev` /
+`loki-agent` layouts. Launch with **`LEADER-z`** (`Ctrl-a` then `z`) or `zd` / `za`.
+
+One Windows wrinkle: zellij spawns **`cmd.exe`** in panes by default, and cmd never
+loads `loki-shell.ps1` — so Alt-k/yazi and the aliases would be dead *inside* zellij.
+`install.ps1` fixes this by generating a Windows config
+(`%LOCALAPPDATA%\loki-zellij\config.kdl` = the shared `config.kdl` + `default_shell
+"pwsh.exe"`) and `loki-shell.ps1` aims `ZELLIJ_CONFIG_FILE` at it, so panes spawn
+**PowerShell** instead. (Known upstream quirk: with a pwsh `default_shell`, new panes may
+open in your home dir rather than the current one — zellij issue #5052.) Re-run
+`install.ps1` after editing `zellij/config.kdl` so the Windows copy tracks it.
+
+The remaining WSL-only piece is **tmux** (no native Windows build) — so the `loki-agent`
+layout's tmux pane is the one thing that still needs WSL; `loki-dev` (yazi sidebar) is
+fully native.
 
 From PowerShell:
 
@@ -97,17 +113,42 @@ mode runs directly on the Windows drive, so this doesn't apply.)
 
 | Alias | Does |
 |-------|------|
+| **`Alt-k`**   | **pop open yazi in the current pane** — quits back to the dir you browsed to. Bound at the shell level so it works over SSH too (opens yazi on the *remote* box). Same chord on Linux (bash/ble.sh) and native Windows (PSReadLine). |
+| `y`           | the function `Alt-k` runs — yazi that cd's to its last dir on quit |
 | `zd` / `za`   | zellij dev layout / dev + tmux agent monitor |
 | `zin` / `zind`| **nested** zellij for an SSH'd-into box (control key `Ctrl-o`, not `Ctrl-g`) |
 | `yz`          | yazi in a floating zellij pane |
 | `z <dir>`     | zoxide smart jump |
 | `ll` `la` `lt`| eza listings with icons + git |
 
+> **Why Alt-k and not a wezterm key?** A wezterm keybinding always spawns yazi
+> *locally*. Putting the binding in the shell means wezterm just forwards `Alt-k`
+> (ESC k) to whichever shell has focus — so inside an SSH session it opens yazi
+> on the **remote** machine, browsing the remote filesystem. That's the
+> "SSH passthrough". `LEADER-y` (`Ctrl-a` then `y`) still opens a *local* yazi
+> tab when you want one.
+
 ## Nesting (local zellij ⊃ ssh ⊃ remote zellij)
 
-The outer (local) zellij owns `Ctrl-g`. Start the inner (remote) one with `zin` so its
-control key is `Ctrl-o` — it passes through the outer's locked mode cleanly. tmux's
-`Ctrl-b` works at any depth. See the **NEST** section in `cheatsheet.html`.
+Run zellij, SSH into another box, run zellij there, and drive **both** at once:
+
+| Key | Controls |
+|-----|----------|
+| `Ctrl-g` | the **outer** zellij (the first one you started) |
+| `Ctrl-o` | the **inner** zellij — start it with `zin`/`zind` so its control key doesn't clash with the outer's `Ctrl-g`. The keystroke passes through the outer's locked mode to reach it. |
+| `Ctrl-b` | **tmux**, at any depth |
+| `Alt-k`  | **yazi** — unbound in zellij on purpose, so it falls through every layer to the focused shell and opens yazi on *that* box (works on the inner/remote pane too) |
+
+Keep the outer in its default **locked** mode so `Ctrl-o`/`Ctrl-b` pass through. To
+drive the inner session use its **mode keys** (`Ctrl-o` then `p`/`t`/`r`…) — the outer
+eats bare `Alt-*` zellij shortcuts in locked mode (`Alt-k` is the deliberate exception).
+
+**On Windows** zellij is now native, so a local Windows zellij can be your **outer**
+layer (`Ctrl-g`): start it with `LEADER-z`/`zd`, SSH into a Linux box from a pane, run
+`zin` there for the **inner** (`Ctrl-o`). Or skip the local one — PowerShell + SSH just
+forward `Ctrl-g`/`Ctrl-o`/`Ctrl-b`, so the first zellij you start after SSHing in is the
+outer and a further `ssh … && zin` is the inner. WezTerm's leader is `Ctrl-a`, which
+clashes with nothing. See the **NEST** section in `cheatsheet.html`.
 
 ## Palette
 

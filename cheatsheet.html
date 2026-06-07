@@ -105,12 +105,13 @@
         <tr><td class="k"><kbd>Ctrl</kbd> <kbd>g</kbd></td><td class="d">Lock ⇄ control (normal) mode</td></tr>
         <tr><td class="k"><kbd>Ctrl</kbd> <kbd>q</kbd></td><td class="d">Quit zellij</td></tr>
         <tr><td class="k"><kbd>Alt</kbd> <kbd>n</kbd></td><td class="d">New pane</td></tr>
-        <tr><td class="k"><kbd>Alt</kbd> <kbd>←↓↑→</kbd> / <kbd>h j k l</kbd></td><td class="d">Move focus (or switch tab at edge)</td></tr>
+        <tr><td class="k"><kbd>Alt</kbd> <kbd>←↓↑→</kbd> / <kbd>h j l</kbd></td><td class="d">Move focus (or switch tab at edge) — <kbd>Alt</kbd><kbd>↑</kbd> = up</td></tr>
         <tr><td class="k"><kbd>Alt</kbd> <kbd>f</kbd></td><td class="d">Toggle floating panes</td></tr>
         <tr><td class="k"><kbd>Alt</kbd> <kbd>+</kbd> / <kbd>-</kbd></td><td class="d">Resize focused pane</td></tr>
         <tr><td class="k"><kbd>Alt</kbd> <kbd>[</kbd> / <kbd>]</kbd></td><td class="d">Previous / next swap layout</td></tr>
         <tr><td class="k"><kbd>Alt</kbd> <kbd>i</kbd> / <kbd>o</kbd></td><td class="d">Move tab left / right</td></tr>
-        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>y</kbd></td><td class="d">Summon <b>yazi</b> in a floating pane</td></tr>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>y</kbd></td><td class="d">Summon <b>yazi</b> in a floating pane (this zellij)</td></tr>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>k</kbd></td><td class="d"><b>yazi</b> — left unbound in zellij so it falls through to the focused shell (opens yazi <b>where you're focused</b>, even nested/over SSH; cd's to its last dir on quit)</td></tr>
       </table>
       <div class="grp">Pane mode &nbsp;<span class="seq">(<kbd>Ctrl</kbd> <kbd>g</kbd> → <kbd>p</kbd>)</span></div>
       <table>
@@ -175,7 +176,8 @@
         <tr><td class="k"><kbd>Ctrl</kbd><kbd>o</kbd> → <kbd>p</kbd>/<kbd>t</kbd>/<kbd>r</kbd>…</td><td class="d">Take control of inner, then use mode keys normally</td></tr>
         <tr><td class="k"><kbd>Esc</kbd></td><td class="d">Inner back to locked (passes straight through)</td></tr>
       </table>
-      <div class="mode-flow">Caveat: the outer eats the <kbd>Alt</kbd><kbd>*</kbd> shortcuts (incl. <kbd>Alt</kbd><kbd>y</kbd>) in locked mode, so on the inner session use <b>mode-based</b> keys (<kbd>Ctrl</kbd><kbd>o</kbd> then <kbd>p</kbd>…) rather than the Alt combos. Three layers max stay distinct: outer <kbd>Ctrl</kbd><kbd>g</kbd> · inner <kbd>Ctrl</kbd><kbd>o</kbd> · tmux <kbd>Ctrl</kbd><kbd>b</kbd>.</div>
+      <div class="mode-flow">Caveat: the outer eats the <kbd>Alt</kbd><kbd>*</kbd> shortcuts that zellij binds (incl. <kbd>Alt</kbd><kbd>y</kbd>) in locked mode, so to drive the inner session use <b>mode-based</b> keys (<kbd>Ctrl</kbd><kbd>o</kbd> then <kbd>p</kbd>…) rather than the Alt combos. Three layers stay distinct: outer <kbd>Ctrl</kbd><kbd>g</kbd> · inner <kbd>Ctrl</kbd><kbd>o</kbd> · tmux <kbd>Ctrl</kbd><kbd>b</kbd>.</div>
+      <div class="mode-flow loki"><b>Exception — yazi.</b> <kbd>Alt</kbd><kbd>k</kbd> is deliberately <i>not</i> bound in zellij, so it falls through <i>both</i> layers to the shell that has focus — press it on the inner/remote pane and yazi opens on the <b>remote</b> box (the real "SSH passthrough"). On Windows, zellij is native (0.44+), so a local Windows zellij can be the <b>outer</b> layer (<kbd>Ctrl</kbd><kbd>g</kbd>) — start it with <span class="seq">L</span><kbd>z</kbd>/<code>zd</code>, then SSH out and <code>zin</code> for the inner (<kbd>Ctrl</kbd><kbd>o</kbd>). Or skip it: PowerShell + SSH forward the keys, so the first zellij you start after SSHing in is the outer. WezTerm's leader <kbd>Ctrl</kbd><kbd>a</kbd> clashes with nothing at any depth.</div>
     </div>
 
     <!-- ════════════ WEZTERM ════════════ -->
@@ -185,7 +187,7 @@
       <div class="grp">Leader chords</div>
       <table>
         <tr><td class="k loki"><span class="seq">L</span> <kbd>y</kbd></td><td class="d">Open <b>yazi</b> in a new tab</td></tr>
-        <tr><td class="k loki"><span class="seq">L</span> <kbd>z</kbd></td><td class="d">Open <b>zellij</b> in a new tab</td></tr>
+        <tr><td class="k loki"><span class="seq">L</span> <kbd>z</kbd></td><td class="d">Open <b>zellij</b> in a new tab (native on Windows since 0.44)</td></tr>
         <tr><td class="k"><span class="seq">L</span> <kbd>\</kbd> / <kbd>-</kbd></td><td class="d">Split horizontally / vertically</td></tr>
         <tr><td class="k"><span class="seq">L</span> <kbd>c</kbd> / <kbd>x</kbd></td><td class="d">New tab / close pane</td></tr>
         <tr><td class="k"><span class="seq">L</span> <kbd>f</kbd></td><td class="d">Toggle fullscreen</td></tr>
@@ -227,7 +229,7 @@
         <tr><td class="k"><kbd>t</kbd> · <kbd>[</kbd>/<kbd>]</kbd></td><td class="d">New yazi tab · prev/next tab</td></tr>
         <tr><td class="k"><kbd>q</kbd> / <kbd>~</kbd></td><td class="d">Quit (cd on exit) / help</td></tr>
       </table>
-      <div class="mode-flow loki">In zellij: <kbd>Alt</kbd><kbd>y</kbd> (anywhere) or pane-mode <kbd>y</kbd>, or shell alias <code>yz</code>.</div>
+      <div class="mode-flow loki">Open it: <kbd>Alt</kbd><kbd>k</kbd> anywhere (shell-level — works in a bare terminal, inside zellij, and over SSH; quits back to the dir you browsed to). Also: <kbd>Alt</kbd><kbd>y</kbd> for a zellij floating pane, pane-mode <kbd>y</kbd>, or the shell alias <code>yz</code> / <code>y</code>.</div>
     </div>
 
     <!-- ════════════ TMUX ════════════ -->
@@ -293,7 +295,10 @@
       </table>
       <div class="grp loki">Loki shortcuts</div>
       <table>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>k</kbd></td><td class="d">Pop open <b>yazi</b> in the current shell — works in a bare terminal, inside zellij, and over SSH (opens yazi on whichever box has focus); cd's to its last dir on quit</td></tr>
+        <tr><td class="k loki"><code>y</code></td><td class="d">The command <kbd>Alt</kbd><kbd>k</kbd> runs — yazi that cd's to its last dir</td></tr>
         <tr><td class="k loki"><code>yz</code></td><td class="d">yazi floating pane (in zellij) / plain yazi</td></tr>
+        <tr><td class="k loki"><code>zin</code> / <code>zind</code></td><td class="d"><b>nested</b> zellij for an SSH'd-into box (control = <kbd>Ctrl</kbd><kbd>o</kbd>)</td></tr>
         <tr><td class="k loki"><code>zd</code> / <code>za</code></td><td class="d">zellij dev / agent layout</td></tr>
       </table>
     </div>

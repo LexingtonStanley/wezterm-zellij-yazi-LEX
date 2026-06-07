@@ -4,11 +4,12 @@
 #   * WezTerm runs natively and opens native PowerShell (claude/git/yazi/eza/...)
 #   * this script installs the WezTerm config + Nerd Font + the CLI tools (winget)
 #     and wires a PowerShell $PROFILE that loads loki-shell.ps1 (prompt + aliases)
-#   * zellij has no native Windows build - it's the one piece that stays in WSL,
-#     reachable on demand via WezTerm's LEADER-z (or `zd`/`za` from PowerShell)
+#   * zellij runs NATIVELY on Windows since 0.44 (winget id Zellij.Zellij) and is
+#     installed below, themed via $ZELLIJ_CONFIG_DIR; LEADER-z / `zd` / `za` run it
 #
 # Want the old "boot the whole terminal into WSL" behaviour instead? Pass -WithWsl
-# here AND set WIN_USE_WSL = true near the top of wezterm/wezterm.lua.
+# here AND set WIN_USE_WSL = true near the top of wezterm/wezterm.lua. (tmux still
+# has no native Windows build, so the loki-agent layout's tmux pane needs WSL.)
 #
 # Run from PowerShell:
 #   irm https://raw.githubusercontent.com/LexingtonStanley/wezterm-zellij-yazi-LEX/master/install.ps1 | iex
@@ -32,6 +33,65 @@ function Cyan($m){ Write-Host $m -ForegroundColor Cyan }
 function Ok($m)  { Write-Host "  [ok] $m" -ForegroundColor Green }
 function Warn($m){ Write-Host "  [!] $m" -ForegroundColor Yellow }
 function Have($n){ [bool](Get-Command $n -ErrorAction SilentlyContinue) }
+
+# zellij has a native Windows build since 0.44. winget lags the upstream release,
+# so (mirroring install.sh on Linux) fetch the LATEST zip straight from GitHub,
+# drop zellij.exe into %LOCALAPPDATA%\Zellij, and ensure that dir is on PATH.
+# Rename-then-replace so it works even while a zellij session is open (you can't
+# overwrite a running exe, but you can rename it).
+function Install-ZellijLatest {
+  Cyan "Installing/updating native zellij (latest GitHub release)"
+  $dir = Join-Path $env:LOCALAPPDATA "Zellij"
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  try {
+    $rel   = Invoke-RestMethod "https://api.github.com/repos/zellij-org/zellij/releases/latest" -Headers @{ "User-Agent"="loki-term" }
+    $asset = $rel.assets | Where-Object { $_.name -eq "zellij-x86_64-pc-windows-msvc.zip" } | Select-Object -First 1
+    if (-not $asset) { Warn "no Windows zip asset in $($rel.tag_name)"; return }
+    $tmp = Join-Path $env:TEMP "zj-$($rel.tag_name)"; Remove-Item $tmp -Recurse -Force -EA SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+    $zip = Join-Path $tmp "z.zip"
+    Invoke-WebRequest $asset.browser_download_url -OutFile $zip
+    Expand-Archive $zip -DestinationPath $tmp -Force
+    $exe = Get-ChildItem $tmp -Recurse -Filter zellij.exe | Select-Object -First 1
+    $dst = Join-Path $dir "zellij.exe"
+    if (Test-Path $dst) { Move-Item $dst (Join-Path $dir "zellij.exe.old") -Force -EA SilentlyContinue }
+    Copy-Item $exe.FullName $dst -Force
+    Remove-Item $tmp -Recurse -Force -EA SilentlyContinue
+    $userPath = [Environment]::GetEnvironmentVariable("Path","User")
+    if ($userPath -notlike "*$dir*") {
+      [Environment]::SetEnvironmentVariable("Path", ($userPath.TrimEnd(';') + ";" + $dir), "User")
+      $env:Path += ";$dir"
+      Ok "added $dir to user PATH (restart shells to pick it up)"
+    }
+    Ok ("zellij " + $rel.tag_name + " -> " + $dst)
+  } catch { Warn "zellij install failed: $($_.Exception.Message)" }
+}
+
+# Windows zellij spawns cmd.exe in panes by default, which never loads
+# loki-shell.ps1 — so Alt-k/yazi and the aliases would be dead inside zellij.
+# Generate a Windows config = the shared config.kdl + `default_shell pwsh.exe`
+# (loki-shell.ps1 points ZELLIJ_CONFIG_FILE at it; ZELLIJ_CONFIG_DIR still gives
+# it the shared theme + layouts). Regenerated each run so it tracks config.kdl.
+function Generate-WinZellijConfig {
+  $src = Join-Path $RepoDir "zellij\config.kdl"
+  if (-not (Test-Path $src)) { return }
+  $shell = (Get-Command pwsh -EA SilentlyContinue).Source
+  if (-not $shell) { $shell = (Get-Command powershell -EA SilentlyContinue).Source }
+  if (-not $shell) { Warn "no PowerShell found for zellij default_shell"; return }
+  $genDir = Join-Path $env:LOCALAPPDATA "loki-zellij"
+  New-Item -ItemType Directory -Force -Path $genDir | Out-Null
+  $kdlShell = $shell -replace '\\','\\'   # escape backslashes for the KDL string
+  $raw    = Get-Content -Raw $src
+  $suffix = "`n// [LOKI win] spawn PowerShell (not cmd) so in-pane bindings (Alt-k yazi) work`n" +
+            "default_shell `"$kdlShell`"`n"
+  # Outer session: control key = Ctrl-g (the loki default).
+  Set-Content -Path (Join-Path $genDir "config.kdl") -Value ($raw + $suffix) -Encoding UTF8
+  # Inner/nested session: control key = Ctrl-o so zellij-in-zellij doesn't clash
+  # with the outer's Ctrl-g. Mirrors install.sh's `sed 's/Ctrl g/Ctrl o/g'`;
+  # launched via the zin/zind functions in loki-shell.ps1.
+  Set-Content -Path (Join-Path $genDir "config-nested.kdl") -Value (($raw -replace 'Ctrl g','Ctrl o') + $suffix) -Encoding UTF8
+  Ok "generated Windows zellij configs (outer Ctrl-g + nested Ctrl-o, default_shell -> $shell)"
+}
 
 Cyan "==> Loki terminal :: Windows setup (native)"
 
@@ -136,6 +196,8 @@ if (-not $SkipTools) {
       Warn "claude (Claude Code) not on PATH - install it with:  irm https://claude.ai/install.ps1 | iex"
     } else { Ok "claude already installed" }
   }
+  # zellij: latest native build from GitHub (not winget, which lags).
+  Install-ZellijLatest
 }
 
 # -- 5. Wire loki-shell.ps1 into the PowerShell profile (prompt + aliases) --
@@ -193,6 +255,9 @@ bash "$REPO/install.sh"
   }
 }
 
+# -- 5b. Windows zellij config (default_shell pwsh, so panes load this profile) --
+Generate-WinZellijConfig
+
 Cyan "==> Done. Launch WezTerm - it opens native PowerShell in your project dir."
-Cyan "    claude, git, yazi, ll/la/lt all work natively. zellij: press LEADER-z (Ctrl-a z) for a WSL session."
+Cyan "    claude, git, yazi, zellij, ll/la/lt all work natively. zellij: LEADER-z (Ctrl-a z) or zd/za."
 Cyan "    Cheatsheet: $RepoDir\cheatsheet.html"
