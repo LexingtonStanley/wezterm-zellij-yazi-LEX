@@ -154,6 +154,38 @@ else
   PS1="${_LK_CYAN}\342\224\214\342\224\200\$([[ \$? != 0 ]] && echo \"[${_LK_RED}\342\234\227${_LK_CYAN}]\342\224\200\")[$(if [[ ${EUID} == 0 ]]; then echo "${_LK_RED}\u${_LK_YEL}@${_LK_NEON}\h"; else echo "${_LK_GREEN}\u${_LK_YEL}@${_LK_NEON}\h"; fi)${_LK_CYAN}]\342\224\200[${_LK_NEON}\w${_LK_CYAN}]\n${_LK_CYAN}\342\224\224\342\224\200\342\224\200\342\225\274 ${_LK_NEON}\\$ ${_LK_RST}"
 fi
 
+# ── cs (command cheatsheet) ─────────────────────────────────────────────
+# Alt-s : fuzzy-pick a saved command and INSERT it on the current prompt line
+# (the daily driver — "ask → try → pick → it's on my line"). Alt-/ in zellij
+# opens the full browse pane. See ~/.local/share/cs (repo: terminal-cheatsheet).
+if command -v cs >/dev/null 2>&1; then
+  if [[ ${BLE_VERSION-} ]]; then
+    function ble/widget/cs-insert {
+      local c; c=$(cs --print </dev/tty)        # fzf draws on /dev/tty
+      [[ $c ]] && ble/widget/insert-string "$c"
+      ble/widget/redraw-line 2>/dev/null
+    }
+    ble-bind -f 'M-s' 'cs-insert'
+  else
+    __cs_insert() {
+      local c; c=$(cs --print) || return
+      [ -n "$c" ] || return
+      READLINE_LINE="${READLINE_LINE:0:READLINE_POINT}${c}${READLINE_LINE:READLINE_POINT}"
+      READLINE_POINT=$(( READLINE_POINT + ${#c} ))
+    }
+    bind -x '"\es": __cs_insert' 2>/dev/null    # \es = Alt-s
+  fi
+  # background, throttled login sync (<=1/15min per box; never blocks the shell)
+  if command -v cs-sync >/dev/null 2>&1; then
+    __cs_stamp="${XDG_RUNTIME_DIR:-/tmp}/.cs-sync.stamp"
+    if [ ! -f "$__cs_stamp" ] || \
+       [ $(( $(date +%s) - $(stat -c %Y "$__cs_stamp" 2>/dev/null || echo 0) )) -gt 900 ]; then
+      touch "$__cs_stamp" 2>/dev/null
+      ( CS_SYNC_QUIET=1 cs-sync >/dev/null 2>&1 & ) 2>/dev/null
+    fi
+  fi
+fi
+
 # ── attach ble.sh LAST (after starship/fzf/zoxide set PROMPT_COMMAND) ─────
 # Tune the autosuggestion look to match the cyan-matrix palette: dim-teal ghost
 # text, and accept the whole suggestion with → / End (ble.sh default).

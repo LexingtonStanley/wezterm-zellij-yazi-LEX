@@ -186,6 +186,10 @@ keybinds clear-defaults=true {
         // [LOKI] summon yazi file browser as a floating pane from anywhere
         // (works in locked mode, so it's always one chord away over SSH)
         bind "Alt y" { Run "yazi" { floating true; close_on_exit true; }; }
+        // [LOKI] summon the cs command cheatsheet (fuzzy search; Enter copies
+        // the command to the clipboard). Alt-/ is free; Alt-c=fzf-cd, Alt-y=yazi.
+        // For "insert onto the prompt line" use the ble.sh Alt-s widget instead.
+        bind "Alt /" { Run "cs" { floating true; close_on_exit true; }; }
     }
     shared_except "locked" "renametab" "renamepane" {
         bind "Ctrl g" { SwitchToMode "locked"; }
