@@ -223,10 +223,10 @@
       </table>
       <div class="grp">Find</div>
       <table>
-        <tr><td class="k"><kbd>/</kbd> · <kbd>n</kbd>/<kbd>N</kbd></td><td class="d">Search names · next/prev</td></tr>
-        <tr><td class="k"><kbd>s</kbd></td><td class="d">Search by file <b>content</b> (rg)</td></tr>
+        <tr><td class="k"><kbd>/</kbd> · <kbd>n</kbd>/<kbd>N</kbd></td><td class="d">Find names in this dir · next/prev</td></tr>
+        <tr><td class="k"><kbd>s</kbd> / <kbd>S</kbd></td><td class="d">Search names (fd) / file <b>content</b> (rg), recursive</td></tr>
         <tr><td class="k"><kbd>f</kbd></td><td class="d">Filter current dir</td></tr>
-        <tr><td class="k"><kbd>t</kbd> · <kbd>[</kbd>/<kbd>]</kbd></td><td class="d">New yazi tab · prev/next tab</td></tr>
+        <tr><td class="k"><kbd>t</kbd> <kbd>t</kbd> · <kbd>[</kbd>/<kbd>]</kbd></td><td class="d">New yazi tab · prev/next tab</td></tr>
         <tr><td class="k"><kbd>q</kbd> / <kbd>~</kbd></td><td class="d">Quit (cd on exit) / help</td></tr>
       </table>
       <div class="mode-flow loki">Open it: <kbd>Alt</kbd><kbd>k</kbd> anywhere (shell-level — works in a bare terminal, inside zellij, and over SSH; quits back to the dir you browsed to). Also: <kbd>Alt</kbd><kbd>y</kbd> for a zellij floating pane, pane-mode <kbd>y</kbd>, or the shell alias <code>yz</code> / <code>y</code>.</div>
@@ -273,6 +273,44 @@
         <tr><td class="k"><kbd>Ctrl</kbd><kbd>j</kbd>/<kbd>k</kbd> · <kbd>↑↓</kbd></td><td class="d">Move cursor</td></tr>
         <tr><td class="k"><kbd>Enter</kbd> / <kbd>Esc</kbd></td><td class="d">Accept / cancel</td></tr>
       </table>
+    </div>
+
+    <!-- ════════════ CS (COMMAND CHEATSHEET) ════════════ -->
+    <div class="card" data-tag="cs cheatsheet commands recall">
+      <h2><span class="ico"></span> CS <span class="note">command cheatsheet</span></h2>
+      <div class="mode-flow">Your personal, fuzzy-searchable command store — <b>recall</b> the commands you've nailed at zero token cost. Append-only, syncs across every Loki box. Just type <code>cs</code>.</div>
+      <div class="grp">Search &amp; recall</div>
+      <table>
+        <tr><td class="k"><code>cs</code></td><td class="d">Fuzzy-search everything; <kbd>Enter</kbd> copies the command</td></tr>
+        <tr><td class="k"><code>cs vim</code></td><td class="d">Scope to a category — <code>linux</code> · <code>vim</code> · <code>python</code> · <code>yazi</code> · <code>grep</code> · <code>regex</code></td></tr>
+        <tr><td class="k"><code>cs --tag ssh</code></td><td class="d">Scope to a tag</td></tr>
+        <tr><td class="k"><code>cs &lt;text&gt;</code></td><td class="d">Pre-seed the search query</td></tr>
+      </table>
+      <div class="grp">Inside the picker</div>
+      <table>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>c</kbd></td><td class="d">Cycle the <b>category</b> filter (each category → all)</td></tr>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>a</kbd></td><td class="d">Back to <b>all</b> categories</td></tr>
+        <tr><td class="k"><kbd>Ctrl</kbd> <kbd>/</kbd></td><td class="d">Toggle the preview pane</td></tr>
+        <tr><td class="k"><kbd>Enter</kbd></td><td class="d">Copy the selected command</td></tr>
+      </table>
+      <div class="grp loki">Open it</div>
+      <table>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>/</kbd></td><td class="d">cs in a zellij floating pane (copy on <kbd>Enter</kbd>)</td></tr>
+        <tr><td class="k loki"><kbd>Alt</kbd> <kbd>s</kbd></td><td class="d">(ble.sh) fuzzy-pick &amp; <b>type</b> the command onto the prompt line</td></tr>
+      </table>
+      <div class="grp">Save what you learn</div>
+      <table>
+        <tr><td class="k"><code>cs add …</code></td><td class="d">Append one entry — <code>--command --name --desc --category --tags</code> (placeholders in <code>&lt;angle&gt;</code>)</td></tr>
+        <tr><td class="k"><code>… | cs add --stdin</code></td><td class="d">Batch-add a JSON array</td></tr>
+        <tr><td class="k"><code>cs check --approve</code></td><td class="d">Review / approve provisional entries</td></tr>
+      </table>
+      <div class="grp">Manage</div>
+      <table>
+        <tr><td class="k"><code>cs list [cat]</code> · <code>cs stats</code></td><td class="d">List ids+titles · counts per category/tag</td></tr>
+        <tr><td class="k"><code>cs render --all --out x.md</code></td><td class="d">Export polished markdown</td></tr>
+        <tr><td class="k"><code>cs sync</code></td><td class="d">Reconcile with remotes (also runs on a timer)</td></tr>
+      </table>
+      <div class="mode-flow">Its own repo (<code>~/.local/share/cs</code>) — loki-term's installer pulls it in. Agent contract: <code>~/.local/share/cs/AGENTS.md</code>.</div>
     </div>
 
     <!-- ════════════ SHELL ════════════ -->
@@ -361,7 +399,7 @@ filter.addEventListener('input',e=>applyFilter(e.target.value));
 
 // ---- section chips ----
 const legend=document.getElementById('legend');
-[['zellij','ZELLIJ'],['nested','NEST'],['wezterm','WEZTERM'],['yazi','YAZI'],['tmux','TMUX'],['fzf','FZF'],['shell','SHELL'],['setup','PORTING'],['palette','PALETTE'],['','ALL']]
+[['zellij','ZELLIJ'],['nested','NEST'],['wezterm','WEZTERM'],['yazi','YAZI'],['tmux','TMUX'],['fzf','FZF'],['cs','CS'],['shell','SHELL'],['setup','PORTING'],['palette','PALETTE'],['','ALL']]
 .forEach(([tag,label])=>{
   const c=document.createElement('span');c.className='chip';c.textContent=label;
   c.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
