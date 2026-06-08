@@ -259,9 +259,53 @@ bash "$REPO/install.sh"
 # -- 5b. Windows zellij config (default_shell pwsh, so panes load this profile) --
 Generate-WinZellijConfig
 
+# -- 7. cs command cheatsheet (own repo; bootstrap + install) --------------
+# cs lives in its own git repo (~/.local/share/cs) because its data store syncs
+# across machines (lexbox primary + private GitHub mirror). We clone if absent,
+# pull if present, then run cs's own install.ps1 (PATH shim, daily sync task).
+# The PowerShell + zellij integration already ships in loki-shell.ps1/config.kdl.
+function Install-Cs {
+  $CsDir = Join-Path $env:USERPROFILE ".local\share\cs"
+  if (-not (Have git)) { Warn "cs needs git - skipping (install Git, then re-run)"; return }
+  if (-not (Have python)) { Warn "cs needs Python 3 to run - install it (winget install Python.Python.3.12)" }
+
+  $remotes = @()
+  if ($env:CS_REMOTE) { $remotes += $env:CS_REMOTE }
+  $remotes += "lexde@lexbox:git/terminal-cheatsheet.git"
+  $remotes += "https://github.com/LexingtonStanley/terminal-cheatsheet.git"
+
+  $origin = ""
+  if (Test-Path (Join-Path $CsDir ".git")) { $origin = (git -C $CsDir remote get-url origin 2>$null) }
+
+  if ($origin -like "*terminal-cheatsheet*") {
+    Cyan "Updating cs ($CsDir)"
+    git -C $CsDir pull --no-rebase --no-edit 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { Ok "cs updated" } else { Warn "cs pull had issues (offline?) - run 'cs sync' later" }
+  } else {
+    Cyan "Installing cs (command cheatsheet)"
+    if (Test-Path $CsDir) {
+      $bak = "$CsDir.pre-loki." + (Get-Date -Format "yyyyMMdd-HHmmss")
+      Move-Item $CsDir $bak; Warn "backed up existing $CsDir -> $bak"
+    }
+    $cloned = $false
+    foreach ($r in $remotes) {
+      git clone --quiet $r $CsDir 2>$null
+      if ($LASTEXITCODE -eq 0) { Ok "cloned cs from $r"; $cloned = $true; break }
+    }
+    if (-not $cloned) { Warn "could not clone cs (tried lexbox + GitHub). Set CS_REMOTE=<url> and re-run"; return }
+  }
+
+  $csInstall = Join-Path $CsDir "install.ps1"
+  if (Test-Path $csInstall) {
+    try { & powershell -ExecutionPolicy Bypass -File $csInstall | Out-Null; Ok "cs installed - 'cs' on PATH after a shell restart" }
+    catch { Warn "cs install.ps1 had issues - run $csInstall manually" }
+  }
+}
+if (-not $SkipTools) { Install-Cs }
+
 Cyan "==> Done. Launch WezTerm - it opens native PowerShell in your project dir."
 Cyan "    claude, git, yazi, zellij, ll/la/lt all work natively. zellij: LEADER-z (Ctrl-a z) or zd/za."
-Cyan "    Cheatsheet: $RepoDir\cheatsheet.html"
+Cyan "    Cheatsheet: $RepoDir\cheatsheet.html  ·  command cheatsheet: cs  (Alt-/ in zellij)"
 if (Have tailscale) {
   Cyan "    Tailscale: if not on the tailnet yet, click the tray icon to sign in (or: tailscale up --ssh)."
 }

@@ -240,11 +240,72 @@ install_tailscale() {
     || warn "tailscale install failed — see https://tailscale.com/download"
 }
 
+# cs = the personal command cheatsheet. It lives in its OWN git repo
+# (~/.local/share/cs) because its data store syncs bidirectionally across all
+# boxes (lexbox primary + private GitHub mirror). loki-term just bootstraps it:
+# clone if absent, reconcile if present, then run cs's own installer (PATH
+# symlink, daily sync timer, completions). The shell/zellij integration
+# (Alt-s insert-widget, Alt-/ pane, login sync) already ships in loki-shell.sh
+# and config.kdl and no-ops until cs is on PATH.
+CS_DIR="${CS_DIR:-$HOME/.local/share/cs}"
+# tried in order; first reachable wins. Override with CS_REMOTE=… for a new box.
+CS_REMOTES=(
+  ${CS_REMOTE:-}
+  "$HOME/git/terminal-cheatsheet.git"
+  "lexde@lexbox:git/terminal-cheatsheet.git"
+  "https://github.com/LexingtonStanley/terminal-cheatsheet.git"
+)
+install_cs() {
+  ensure git git >/dev/null 2>&1 || true
+  have git     || { warn "cs needs git — skipping"; return; }
+  have python3 || warn "cs needs python3 to run — will install code anyway"
+
+  local origin="" known=0
+  if [ -d "$CS_DIR/.git" ]; then
+    origin="$(git -C "$CS_DIR" remote get-url origin 2>/dev/null || true)"
+    case "$origin" in *terminal-cheatsheet*) known=1 ;; esac
+  fi
+
+  if [ "$known" = 1 ]; then
+    c "Syncing cs ($CS_DIR)"
+    if [ -x "$CS_DIR/cs-sync" ] && bash "$CS_DIR/cs-sync" >/dev/null 2>&1; then
+      ok "cs synced (latest pulled, local changes pushed)"
+    else
+      warn "cs sync had issues (offline?) — run 'cs sync' later"
+    fi
+  else
+    c "Installing cs (command cheatsheet)"
+    # a stale/disconnected copy (e.g. lexbox's early version) is moved aside
+    if [ -e "$CS_DIR" ]; then
+      mv "$CS_DIR" "${CS_DIR}.pre-loki.${TS}"
+      warn "backed up existing $CS_DIR -> ${CS_DIR}.pre-loki.${TS}"
+    fi
+    local cloned=0 r
+    for r in "${CS_REMOTES[@]}"; do
+      [ -n "$r" ] || continue
+      if git clone --quiet "$r" "$CS_DIR" 2>/dev/null; then
+        ok "cloned cs from $r"; cloned=1; break
+      fi
+    done
+    [ "$cloned" = 1 ] || {
+      warn "could not clone cs (tried lexbox + GitHub). Set CS_REMOTE=<url> and re-run, or clone into $CS_DIR manually"
+      return; }
+  fi
+
+  if [ -x "$CS_DIR/install.sh" ]; then
+    "$CS_DIR/install.sh" >/dev/null 2>&1 \
+      && ok "cs installed — \`cs\` on PATH (try: cs, or Alt-/ in zellij)" \
+      || warn "cs install.sh reported issues — run $CS_DIR/install.sh manually"
+  fi
+}
+
 # ── run ─────────────────────────────────────────────────────────────────
 c "▓▒░ Loki terminal setup ░▒▓   (repo: $REPO)"
 [ "$DO_TOOLS" = 1 ] && install_pkgs
 [ "$DO_LINK"  = 1 ] && link_configs
+[ "$DO_TOOLS" = 1 ] && install_cs
 c "Done. Open a new shell (or: source ~/.bashrc) and run:  zellij --layout loki-dev"
+c "Cheatsheet: \`cs\` to search · Alt-/ in zellij · Alt-s inserts onto the prompt"
 if have tailscale; then
   c "Tailscale: if this box isn't on the tailnet yet, join with:"
   c "    sudo tailscale up --hostname=$(hostname -s) --ssh"
