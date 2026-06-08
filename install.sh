@@ -154,6 +154,7 @@ install_pkgs() {
   fi
   install_blesh
   install_nerd_font
+  install_tailscale
 }
 
 # ble.sh = fish-style autosuggestions (grey ghost text from history) for bash.
@@ -227,8 +228,24 @@ install_nerd_font() {
   rm -rf "$tmp"
 }
 
+# Tailscale: upstream installer handles every distro's repo + keyring quirks,
+# including the /etc/apt/keyrings vs /usr/share/keyrings list-file mismatch
+# that bites hand-rolled installs on Debian-trixie-based boxes (Parrot 7 etc.).
+# Doesn't run `tailscale up` — that needs interactive browser login per box.
+install_tailscale() {
+  have tailscale && { ok "tailscale present"; return; }
+  c "Installing tailscale (upstream installer)"
+  curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1 \
+    && ok "tailscale installed" \
+    || warn "tailscale install failed — see https://tailscale.com/download"
+}
+
 # ── run ─────────────────────────────────────────────────────────────────
 c "▓▒░ Loki terminal setup ░▒▓   (repo: $REPO)"
 [ "$DO_TOOLS" = 1 ] && install_pkgs
 [ "$DO_LINK"  = 1 ] && link_configs
 c "Done. Open a new shell (or: source ~/.bashrc) and run:  zellij --layout loki-dev"
+if have tailscale; then
+  c "Tailscale: if this box isn't on the tailnet yet, join with:"
+  c "    sudo tailscale up --hostname=$(hostname -s) --ssh"
+fi

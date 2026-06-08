@@ -177,6 +177,7 @@ if (-not $SkipTools) {
       lazygit   = "JesseDuffield.lazygit"
       delta     = "dandavison.delta"
       fastfetch = "Fastfetch-cli.Fastfetch"
+      tailscale = "tailscale.tailscale"
     }
     foreach ($cmd in $tools.Keys) {
       if (Have $cmd) { Ok "$cmd already installed"; continue }
@@ -261,3 +262,6 @@ Generate-WinZellijConfig
 Cyan "==> Done. Launch WezTerm - it opens native PowerShell in your project dir."
 Cyan "    claude, git, yazi, zellij, ll/la/lt all work natively. zellij: LEADER-z (Ctrl-a z) or zd/za."
 Cyan "    Cheatsheet: $RepoDir\cheatsheet.html"
+if (Have tailscale) {
+  Cyan "    Tailscale: if not on the tailnet yet, click the tray icon to sign in (or: tailscale up --ssh)."
+}

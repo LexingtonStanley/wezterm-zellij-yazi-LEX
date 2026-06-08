@@ -13,8 +13,12 @@ zd                             # zellij dev layout with a yazi file sidebar
 
 `install.sh` brings its own prerequisites (curl, unzip, gpg, fontconfig), installs the
 toolchain via apt/dnf/pacman/brew, fetches WezTerm/Zellij/Yazi + JetBrainsMono Nerd Font
-where missing, and symlinks every config. It backs up anything it replaces to
-`<file>.pre-loki.<timestamp>`.
+where missing, installs **Tailscale** via its upstream installer, and symlinks every
+config. It backs up anything it replaces to `<file>.pre-loki.<timestamp>`.
+
+After install, join the tailnet once per box (interactive, browser login):
+`sudo tailscale up --hostname=$(hostname -s) --ssh`. On Windows, `install.ps1` winget-
+installs Tailscale alongside the other tools; sign in from the tray icon.
 
 Flags: `--no-tools` (link configs only) · `--tools-only` (install packages only).
 
