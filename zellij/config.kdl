@@ -287,3 +287,14 @@ serialize_pane_viewport true
 copy_on_select true
 show_startup_tips false
 mouse_mode true
+
+// [LOKI] FIX: stop the "unicode injected into the command line on new session"
+// bug. Zellij 0.44 negotiates the Kitty Keyboard Protocol with the host
+// terminal at client startup (it emits CSI >1u / <1u push/pop). When the host
+// only partially supports it — notably Windows Terminal (the ufo box), but it
+// also bites some wezterm builds — the protocol's key encodings leak into the
+// new pane as `[..;..u` garbage you have to clear (zellij issue #5017).
+// Turning it off removes the >1u/<1u handshake entirely. Cost: lose enhanced
+// key disambiguation (Ctrl-I vs Tab, richer modifiers) in TUIs — a non-issue
+// here since we run locked-mode passthrough to tmux/vim/agents.
+support_kitty_keyboard_protocol false
