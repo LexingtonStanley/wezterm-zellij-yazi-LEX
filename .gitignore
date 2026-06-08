@@ -7,3 +7,5 @@
 .DS_Store
 # generated at install time from config.kdl, not tracked
 config-nested.kdl
+# Claude Code hook logs — agent prompts/tool I/O, never publish
+logs/
