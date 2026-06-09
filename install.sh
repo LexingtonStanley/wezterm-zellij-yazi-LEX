@@ -299,6 +299,24 @@ CS_REMOTES=(
   "lexde@lexbox:git/terminal-cheatsheet.git"
   "https://github.com/LexingtonStanley/terminal-cheatsheet.git"
 )
+# A box that cloned cs from the public GitHub mirror is effectively pull-only:
+# it has no push credentials, so local `cs add`s never propagate AND every
+# cs-sync prompts for a GitHub login (annoying on each new pane via the login
+# hook). If the lexbox bare repo is reachable (key-based SSH — e.g. once the box
+# is on Tailscale), repoint origin to it so the box becomes a full bidirectional
+# peer. lexbox itself mirrors to GitHub, so leaf boxes don't need the GitHub URL.
+cs_prefer_lexbox_remote() {
+  local lexbox="lexde@lexbox:git/terminal-cheatsheet.git"
+  local origin; origin="$(git -C "$CS_DIR" remote get-url origin 2>/dev/null || true)"
+  case "$origin" in *github.com*) : ;; *) return 0 ;; esac   # only rescue a GitHub origin
+  if GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' \
+       git ls-remote "$lexbox" HEAD >/dev/null 2>&1; then
+    git -C "$CS_DIR" remote set-url origin "$lexbox"
+    git -C "$CS_DIR" remote set-url --push origin "$lexbox"
+    ok "cs: repointed origin to lexbox (full peer; was GitHub pull-only)"
+  fi
+}
+
 install_cs() {
   ensure git git >/dev/null 2>&1 || true
   have git     || { warn "cs needs git — skipping"; return; }
@@ -311,12 +329,7 @@ install_cs() {
   fi
 
   if [ "$known" = 1 ]; then
-    c "Syncing cs ($CS_DIR)"
-    if [ -x "$CS_DIR/cs-sync" ] && bash "$CS_DIR/cs-sync" >/dev/null 2>&1; then
-      ok "cs synced (latest pulled, local changes pushed)"
-    else
-      warn "cs sync had issues (offline?) — run 'cs sync' later"
-    fi
+    c "Updating cs ($CS_DIR)"
   else
     c "Installing cs (command cheatsheet)"
     # a stale/disconnected copy (e.g. lexbox's early version) is moved aside
@@ -334,6 +347,18 @@ install_cs() {
     [ "$cloned" = 1 ] || {
       warn "could not clone cs (tried lexbox + GitHub). Set CS_REMOTE=<url> and re-run, or clone into $CS_DIR manually"
       return; }
+  fi
+
+  # Promote a GitHub-mirror origin to lexbox when reachable (full peer, no creds
+  # prompt), then reconcile non-interactively so the installer can't hang on a
+  # credential prompt or an unreachable remote.
+  cs_prefer_lexbox_remote
+  if [ -x "$CS_DIR/cs-sync" ]; then
+    if GIT_TERMINAL_PROMPT=0 bash "$CS_DIR/cs-sync" >/dev/null 2>&1; then
+      ok "cs synced (latest pulled, local changes pushed)"
+    else
+      warn "cs sync skipped (offline?) — run 'cs sync' later"
+    fi
   fi
 
   if [ -x "$CS_DIR/install.sh" ]; then
