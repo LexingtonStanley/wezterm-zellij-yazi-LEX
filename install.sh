@@ -75,18 +75,32 @@ link_configs() {
   sed 's/Ctrl g/Ctrl o/g' "$REPO/zellij/config.kdl" > "$HOME/.config/zellij/config-nested.kdl"
   ok "generated config-nested.kdl (inner control key = Ctrl-o)"
 
-  # Hook the shell file into ~/.bashrc (idempotent, marker-guarded).
+  # Hook the shell file into ~/.bashrc (idempotent + self-healing).
+  # IMPORTANT: source the file from $REPO, the *actual* install location — NOT a
+  # hardcoded ~/.loki-term. If the repo is cloned elsewhere (e.g. GitHub's
+  # default ~/<repo-name>), a hardcoded path silently no-ops behind the
+  # `[ -f … ] &&` guard and the whole shell layer (cs/Alt-k/autosuggestions)
+  # dies with no error. We rewrite any existing block so a stale path self-heals.
   local marker="# >>> loki-term shell >>>"
-  if ! grep -qF "$marker" "$HOME/.bashrc" 2>/dev/null; then
-    {
-      echo ""
-      echo "$marker"
-      echo '[ -f ~/.loki-term/shell/loki-shell.sh ] && . ~/.loki-term/shell/loki-shell.sh'
-      echo "# <<< loki-term shell <<<"
-    } >> "$HOME/.bashrc"
-    ok "added loki-shell source line to ~/.bashrc"
+  local endmark="# <<< loki-term shell <<<"
+  local shellfile="$REPO/shell/loki-shell.sh"
+  local existed=0
+  if grep -qF "$marker" "$HOME/.bashrc" 2>/dev/null; then
+    existed=1
+    # Strip the old block (portable in-place edit; no GNU-sed -i dependency).
+    sed "/$marker/,/$endmark/d" "$HOME/.bashrc" > "$HOME/.bashrc.loki-tmp" \
+      && mv "$HOME/.bashrc.loki-tmp" "$HOME/.bashrc"
+  fi
+  {
+    echo ""
+    echo "$marker"
+    echo "[ -f \"$shellfile\" ] && . \"$shellfile\""
+    echo "$endmark"
+  } >> "$HOME/.bashrc"
+  if [ "$existed" = 1 ]; then
+    ok "refreshed loki-shell source line in ~/.bashrc -> $shellfile"
   else
-    ok "~/.bashrc already sources loki-shell"
+    ok "added loki-shell source line to ~/.bashrc -> $shellfile"
   fi
 }
 
