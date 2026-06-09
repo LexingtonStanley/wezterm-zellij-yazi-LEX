@@ -147,10 +147,10 @@ install_pkgs() {
     apt)
       sudo apt update -qq || true
       sudo apt install -y fzf zoxide eza bat fd-find ripgrep || warn "some apt pkgs failed"
-      install_zellij_apt; install_yazi_generic; install_wezterm_apt ;;
+      install_fzf_modern; install_zellij_apt; install_yazi_generic; install_wezterm_apt ;;
     dnf)
       sudo dnf install -y fzf zoxide eza bat fd-find ripgrep || warn "some dnf pkgs failed"
-      install_yazi_generic ;;
+      install_fzf_modern; install_yazi_generic ;;
     pacman)
       sudo pacman -Sy --noconfirm fzf zoxide eza bat fd ripgrep zellij yazi wezterm || warn "some pacman pkgs failed" ;;
     brew)
@@ -227,6 +227,36 @@ install_yazi_generic() {
     && sudo install "$tmp"/yazi*/yazi /usr/local/bin/ \
     && sudo install "$tmp"/yazi*/ya   /usr/local/bin/ 2>/dev/null
   rm -rf "$tmp"; have yazi && ok "yazi installed" || warn "yazi install failed"
+}
+
+# apt/dnf ship an ancient fzf (0.44.x on Ubuntu 24.04 / Debian) that lacks the
+# `transform` bind action added in fzf 0.45 — which `cs`'s picker uses for its
+# alt-c category cycler. On the old build fzf rejects the bind and exits
+# instantly; cs captures stderr, so the picker just silently never appears.
+# Drop a modern release binary into ~/.local/bin (early on PATH, no sudo needed,
+# shadows the apt build) whenever the system fzf is missing or older than 0.45.
+install_fzf_modern() {
+  local need="0.45.0" cur=""
+  have fzf && cur="$(fzf --version 2>/dev/null | awk '{print $1}')"
+  if [ -n "$cur" ] && [ "$(printf '%s\n%s\n' "$need" "$cur" | sort -V | head -1)" = "$need" ]; then
+    ok "fzf $cur ok (>= $need)"; return
+  fi
+  c "Installing modern fzf (system fzf ${cur:-absent} < $need; cs's picker needs it)"
+  local arch a ver
+  case "$(uname -m)" in
+    x86_64) a=amd64 ;; aarch64|arm64) a=arm64 ;; armv7l) a=armv7 ;; *) a="$(uname -m)" ;;
+  esac
+  ver="$(curl -fsSL https://api.github.com/repos/junegunn/fzf/releases/latest \
+        | grep -oE '"tag_name":[[:space:]]*"v?[0-9][^"]*' | grep -oE '[0-9][^"]+' | head -1)"
+  [ -n "$ver" ] || { warn "couldn't resolve fzf release — cs search needs fzf >= $need"; return; }
+  mkdir -p "$HOME/.local/bin"
+  if curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${ver}/fzf-${ver}-linux_${a}.tar.gz" \
+       | tar -xz -C "$HOME/.local/bin" fzf; then
+    chmod +x "$HOME/.local/bin/fzf"; hash -r 2>/dev/null || true
+    ok "fzf $ver installed to ~/.local/bin (shadows apt's old build)"
+  else
+    warn "modern fzf install failed — cs interactive search needs fzf >= $need"
+  fi
 }
 
 install_nerd_font() {
