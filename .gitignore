@@ -9,3 +9,4 @@
 config-nested.kdl
 # Claude Code hook logs — agent prompts/tool I/O, never publish
 logs/
+*.bak.*

@@ -1,6 +1,8 @@
 -- ~/.wezterm.lua  ──  Loki terminal :: "matrix, but turquoise"
 -- Portable across Linux/macOS/Windows. Falls back gracefully if the
 -- JetBrainsMono Nerd Font isn't installed (WezTerm picks the next mono font).
+-- On conair the font IS installed (~/.local/share/fonts/JetBrainsMonoNerd/),
+-- so the first-choice family resolves directly.
 --
 -- Part of the ~/.loki-term portable setup. Install via ~/.loki-term/install.sh
 

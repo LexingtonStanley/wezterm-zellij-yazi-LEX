@@ -18,7 +18,10 @@ layout {
                 command "yazi"
             }
             // Main work pane.
-            pane name="  shell" focus=true
-        }
+            pane name="  shell" focus=true {
+		command "nvim"
+		args "/home/cyrus/lexplans.md"
+	    }
+    	}
     }
 }
