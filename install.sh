@@ -197,13 +197,22 @@ unpack_zip() {
 }
 
 # zellij / wezterm aren't always in apt; fall back to upstream binaries.
+# zellij is pinned: 0.45 silently ignores `action write-chars --pane-id` in a session with no
+# client attached, so agentcomms `ac wake` reports success but the agent never gets the message.
+# 0.44.3 is what conair and macdaddy run. Bump only after a real wake test on the new version.
+ZELLIJ_VERSION="${ZELLIJ_VERSION:-0.44.3}"
 install_zellij_apt() {
-  have zellij && { ok "zellij present"; return; }
-  c "Installing zellij (upstream binary)"
-  local url; url="$(curl -fsSL https://api.github.com/repos/zellij-org/zellij/releases/latest \
-        | grep -oE 'https://[^"]*x86_64-unknown-linux-musl\.tar\.gz' | head -1)"
-  [ -n "$url" ] || { warn "couldn't resolve zellij release"; return; }
-  curl -fsSL "$url" | sudo tar -xz -C /usr/local/bin zellij && ok "zellij installed"
+  if have zellij; then
+    local cur; cur="$(zellij --version 2>/dev/null | awk '{print $2}')"
+    case "$cur" in
+      0.44.*) ok "zellij $cur present" ;;
+      *) warn "zellij $cur present, but agent wake needs 0.44.x: if agents run on this box, install $ZELLIJ_VERSION over it" ;;
+    esac
+    return
+  fi
+  c "Installing zellij $ZELLIJ_VERSION (upstream binary, pinned)"
+  curl -fsSL "https://github.com/zellij-org/zellij/releases/download/v${ZELLIJ_VERSION}/zellij-x86_64-unknown-linux-musl.tar.gz" \
+    | sudo tar -xz -C /usr/local/bin zellij && ok "zellij $ZELLIJ_VERSION installed" || warn "zellij install failed"
 }
 
 install_wezterm_apt() {
