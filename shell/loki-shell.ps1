@@ -63,6 +63,57 @@ if ($_prl -and $_prl.Version -ge [version]"2.1.0") {
   try { Set-PSReadLineOption -PredictionViewStyle InlineView } catch {}
   try { Set-PSReadLineOption -Colors @{ InlinePrediction = "#2b6b60" } } catch {}  # dim teal, matches ble.sh
 }
+# PSReadLine 2.2+: suggestions from history AND tab-completion (CompletionPredictor
+# module, PowerShell 7 only), shown as a dropdown list. F2 flips list <-> inline.
+if ($_prl -and $_prl.Version -ge [version]"2.2.0") {
+  try {
+    if ($PSVersionTable.PSVersion.Major -ge 7 -and (Get-Module -ListAvailable CompletionPredictor)) {
+      Import-Module CompletionPredictor -ErrorAction Stop
+      Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    }
+  } catch {}
+  try { Set-PSReadLineOption -PredictionViewStyle ListView } catch {}
+  try { Set-PSReadLineKeyHandler -Key F2 -Function SwitchPredictionView } catch {}
+}
+
+# -- history: bigger, no duplicates; Up/Down search by what's typed ---------
+# (type `git c`, press Up -> only commands starting with `git c`)
+if ($_prl) {
+  try {
+    Set-PSReadLineOption -MaximumHistoryCount 100000 -HistoryNoDuplicates -HistorySearchCursorMovesToEnd
+    Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    # Tab opens a selectable completion menu instead of cycling one match.
+    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+  } catch {}
+}
+
+# -- fzf: fd for Ctrl-t (fast, respects .gitignore); Alt-c = fuzzy cd -------
+if (_have fd) {
+  $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+  $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
+  $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
+}
+if ($_prl -and (Get-Command Invoke-FuzzySetLocation -ErrorAction SilentlyContinue)) {
+  Set-PSReadLineKeyHandler -Key Alt+c -BriefDescription 'fuzzy cd' -ScriptBlock {
+    [Microsoft.PowerShell.PSConsoleReadLine]::RevertLine()
+    [Microsoft.PowerShell.PSConsoleReadLine]::Insert('Invoke-FuzzySetLocation')
+    [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
+  }
+}
+
+# -- completions: carapace (flags/subcommands for git, winget, docker, gh...) -
+# The init script is cached and regenerated only when carapace is updated.
+$_carapace = Get-Command carapace -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($_carapace) {
+  $_cache = Join-Path $env:LOCALAPPDATA 'carapace-init.ps1'
+  if (-not (Test-Path $_cache) -or (Get-Item $_cache).LastWriteTime -lt (Get-Item $_carapace.Source).LastWriteTime) {
+    & $_carapace.Source _carapace powershell | Out-File -Encoding utf8 $_cache
+  }
+  . $_cache
+}
+Remove-Variable _carapace, _cache -ErrorAction SilentlyContinue
+# quick help: `tldr <command>` (tealdeer) shows short usage examples.
 
 # -- listings: eza with icons + git (ll / la / lt), else fall back to dir ----
 if (_have eza) {
@@ -163,4 +214,72 @@ if (_have zellij) {
 } elseif (_have wsl) {
   function zd { wsl.exe -e bash -lic "zd" }
   function za { wsl.exe -e bash -lic "za" }
+}
+
+# -- atuin: full-screen history search on Ctrl-r (folder, exit code, duration)
+# Overrides PSFzf's Ctrl-r when installed; Up arrow stays the prefix search.
+# Loaded near the end because it wraps PSConsoleHostReadLine.
+if ($_prl -and (_have atuin)) {
+  try { atuin init powershell --disable-up-arrow --disable-ai | Out-String | Invoke-Expression } catch {}
+}
+
+# -- WezTerm shell integration ----------------------------------------------
+# Tells WezTerm where each prompt starts, the current folder, and how long the
+# last command took. Pairs with the "WEZTERM-NATIVE EXTRAS" in wezterm.lua:
+#   * new tabs / splits open in the folder you're in   (OSC 7)
+#   * Shift+Up / Shift+Down jump between prompts        (OSC 133)
+#   * triple-click selects one command's whole output   (OSC 133)
+#   * notification when a 30s+ command finishes unfocused (cmd_finished var)
+# Only active inside WezTerm, and only once (guards against double-sourcing).
+if (($env:TERM_PROGRAM -eq 'WezTerm' -or $env:WEZTERM_PANE) -and -not $global:__WezPromptOrig) {
+  $global:__WezEsc = [char]27; $global:__WezBel = [char]7
+  $global:__WezPromptOrig = $function:prompt
+  $global:__WezLastId = -1
+
+  function global:__WezOsc([string]$body) { "$($global:__WezEsc)]$body$($global:__WezBel)" }
+  function global:__WezUserVar([string]$name, [string]$value) {
+    __WezOsc ("1337;SetUserVar=$name=" + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($value)))
+  }
+
+  function global:prompt {
+    $ok = $?; $code = $global:LASTEXITCODE
+    $out = ''
+
+    # End of the previous command's output, with its exit status.
+    $last = Get-History -Count 1
+    if ($last -and $last.Id -ne $global:__WezLastId) {
+      $global:__WezLastId = $last.Id
+      $status = if ($ok) { 0 } elseif ($code) { $code } else { 1 }
+      $out += __WezOsc "133;D;$status"
+      $secs = ($last.EndExecutionTime - $last.StartExecutionTime).TotalSeconds
+      if ($secs -ge 30) {
+        $cmd = $last.CommandLine; if ($cmd.Length -gt 60) { $cmd = $cmd.Substring(0, 57) + '...' }
+        $verdict = if ($status -eq 0) { 'done' } else { "failed ($status)" }
+        $out += __WezUserVar 'cmd_finished' ("{0} - {1} in {2:N0}s" -f $cmd, $verdict, $secs)
+      }
+    }
+
+    # Current folder (real filesystem paths only).
+    if ($PWD.Provider.Name -eq 'FileSystem') {
+      $out += __WezOsc ('7;file://' + [Environment]::MachineName + '/' + $PWD.ProviderPath.Replace('\', '/'))
+    }
+
+    $global:LASTEXITCODE = $code
+    # Re-create a failed $? so starship still shows the red error status.
+    if (-not $ok) { Write-Error 'x' -ErrorAction SilentlyContinue }
+    $body = & $global:__WezPromptOrig
+    # A = prompt starts, B = prompt ends / user input starts.
+    $out + (__WezOsc '133;A') + $body + (__WezOsc '133;B')
+  }
+
+  # C = command output starts: emitted right after Enter, wrapping whatever
+  # PSConsoleHostReadLine is current (atuin's, if it loaded).
+  $global:__WezReadLineOrig = $function:PSConsoleHostReadLine
+  if ($global:__WezReadLineOrig) {
+    function global:PSConsoleHostReadLine {
+      $line = & $global:__WezReadLineOrig
+      [Console]::Write((__WezOsc '133;C'))
+      $line
+    }
+  }
 }

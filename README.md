@@ -113,6 +113,31 @@ mode runs directly on the Windows drive, so this doesn't apply.)
 | `install.ps1`                | Windows bootstrap (native): WezTerm config + font + CLI tools + PS profile |
 | `cheatsheet.html`            | every keyboard shortcut, matrix-styled, searchable |
 
+## WezTerm-native extras
+
+These work best when WezTerm owns the screen (its own tabs/panes rather than
+zellij/herdr/tmux full-screen). The shell must emit OSC 7 / OSC 133 and the
+`cmd_finished` user var — `loki-shell.ps1` does this on Windows.
+**Linux TODO:** port the shell side (atuin, carapace, prompt markers,
+`cmd_finished`) to `loki-shell.sh`, and add atuin/carapace/tealdeer to `install.sh`.
+
+| Key / command | Does |
+|---|---|
+| status bar | yellow **LEADER** badge while `Ctrl-a` is armed · workspace · folder · time |
+| `LEADER-w` | fuzzy project switcher: open workspaces + zoxide folders (one workspace per project) |
+| `LEADER-s` | list open workspaces |
+| `Shift-Up` / `Shift-Down` | jump to previous / next prompt |
+| triple-click | select one command's whole output |
+| `Ctrl`+click `file.py:42` | open at that line in `$EDITOR` / code / nvim / hx / micro (else a bat view) |
+| 30s+ command finishes unfocused | desktop notification |
+| `Ctrl-r` | atuin history search (press again to cycle global / host / session / folder) |
+| `Up` / `Down` | history filtered by what's already typed |
+| `Tab` | completion menu (carapace covers most CLIs) |
+| `F2` | suggestions: dropdown list ↔ inline ghost text |
+| `Ctrl-t` / `Alt-c` | fuzzy file pick / fuzzy cd (fzf + fd) |
+| `tldr <cmd>` | short usage examples |
+| `Ctrl-Shift-P` / `Ctrl-Shift-F` / `Ctrl-Shift-Space` | WezTerm built-ins: command palette / scrollback search / QuickSelect |
+
 ## Handy aliases (from `loki-shell.sh`)
 
 | Alias | Does |

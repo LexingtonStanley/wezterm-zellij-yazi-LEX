@@ -252,4 +252,188 @@ if is_windows then
   end
 end
 
+------------------------------------------------------------------------
+-- WEZTERM-NATIVE EXTRAS
+-- Most useful when WezTerm owns the screen (native tabs/panes). Inside a
+-- full-screen multiplexer (zellij / herdr / tmux) the prompt-jump, output
+-- selection and file:line links only see that multiplexer's screen.
+--
+-- Shell side: the prompt must emit OSC 7 (cwd), OSC 133 (prompt markers) and
+-- the `cmd_finished` user var. loki-shell.ps1 does this on Windows.
+-- TODO(linux): add the bash equivalent to loki-shell.sh.
+------------------------------------------------------------------------
+local SEP = is_windows and "\\" or "/"
+
+-- Absolute path of the pane's folder (from the prompt's OSC 7), or nil.
+local function pane_cwd(pane)
+  local cwd = pane:get_current_working_dir()
+  if not cwd then return nil end
+  local path
+  if type(cwd) == "userdata" then path = cwd.file_path
+  else path = (tostring(cwd):gsub("^file://[^/]*", "")) end
+  if is_windows then path = path:gsub("^/(%a:)", "%1"):gsub("/", "\\") end
+  return path
+end
+
+local function short_cwd(pane)
+  local path = pane_cwd(pane)
+  if not path then return "" end
+  local home = is_windows and wezterm.home_dir:gsub("/", "\\") or wezterm.home_dir
+  if path:lower():sub(1, #home) == home:lower() then path = "~" .. path:sub(#home + 1) end
+  return path
+end
+
+-- STATUS BAR (right side of the tab bar)
+--   [ LEADER ]  shown while Ctrl-a is armed (you have 1s to press the key)
+--   workspace · current folder · time
+-- The tab bar stays visible with one tab so this is always on screen.
+config.hide_tab_bar_if_only_one_tab = false
+config.status_update_interval = 1000
+
+wezterm.on("update-status", function(window, pane)
+  local cells = {}
+  if window:leader_is_active() then
+    table.insert(cells, { Background = { Color = "#ffcc00" } })
+    table.insert(cells, { Foreground = { Color = C.bg } })
+    table.insert(cells, { Attribute = { Intensity = "Bold" } })
+    table.insert(cells, { Text = " LEADER " })
+    table.insert(cells, "ResetAttributes")
+    table.insert(cells, { Text = " " })
+  end
+  table.insert(cells, { Foreground = { Color = C.dim } })
+  table.insert(cells, { Text = window:active_workspace() .. "  " })
+  table.insert(cells, { Foreground = { Color = C.fg } })
+  table.insert(cells, { Text = short_cwd(pane) .. "  " })
+  table.insert(cells, { Foreground = { Color = C.cyan } })
+  table.insert(cells, { Text = wezterm.strftime("%a %d %b  %H:%M") .. " " })
+  window:set_right_status(wezterm.format(cells))
+end)
+
+-- LONG-COMMAND NOTIFICATIONS: the shell sets a `cmd_finished` user var when a
+-- command took 30s+. If this window isn't focused, pop a desktop notification.
+wezterm.on("user-var-changed", function(window, pane, name, value)
+  if name == "cmd_finished" and not window:is_focused() then
+    window:toast_notification("WezTerm", value, nil, 6000)
+  end
+end)
+
+-- SHELL-INTEGRATION KEYS (need the OSC 133 prompt markers)
+--   Shift+Up / Shift+Down   jump to previous / next prompt
+--   triple-click            select one command's whole output
+table.insert(config.keys, { key = "UpArrow",   mods = "SHIFT", action = act.ScrollToPrompt(-1) })
+table.insert(config.keys, { key = "DownArrow", mods = "SHIFT", action = act.ScrollToPrompt(1) })
+table.insert(config.mouse_bindings, { event = { Down = { streak = 3, button = "Left" } },
+  mods = "NONE", action = act.SelectTextAtMouseCursor("SemanticZone") })
+
+-- PROJECT / WORKSPACE SWITCHER
+--   LEADER-w   fuzzy list: open workspaces (●) + your zoxide folders. Picking a
+--              folder creates/switches to a workspace named after it, so each
+--              project keeps its own tabs. Type to filter, Enter, Esc cancels.
+--   LEADER-s   just the open workspaces
+local function folder_name(dir) return dir:match("([^\\/]+)[\\/]*$") or dir end
+
+table.insert(config.keys, { key = "w", mods = "LEADER", action = wezterm.action_callback(function(window, pane)
+  local choices = {}
+  for _, ws in ipairs(wezterm.mux.get_workspace_names()) do
+    table.insert(choices, { id = "ws:" .. ws, label = "● " .. ws })
+  end
+  local ok, success, stdout = pcall(wezterm.run_child_process, { "zoxide", "query", "--list" })
+  if ok and success then
+    for dir in (stdout or ""):gmatch("[^\r\n]+") do
+      table.insert(choices, { id = "dir:" .. dir, label = "  " .. folder_name(dir) .. "   " .. dir })
+    end
+  end
+  window:perform_action(act.InputSelector({
+    title = "Switch project",
+    fuzzy = true,
+    fuzzy_description = "Project: ",
+    choices = choices,
+    action = wezterm.action_callback(function(win, p, id)
+      if not id then return end
+      if id:sub(1, 3) == "ws:" then
+        win:perform_action(act.SwitchToWorkspace({ name = id:sub(4) }), p)
+      else
+        local dir = id:sub(5)
+        win:perform_action(act.SwitchToWorkspace({ name = folder_name(dir), spawn = { cwd = dir } }), p)
+      end
+    end),
+  }), pane)
+end) })
+table.insert(config.keys, { key = "s", mods = "LEADER",
+  action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES", title = "Workspaces" }) })
+
+-- CLICKABLE file:line  (Ctrl+click, like other links)
+-- `src/app.py:42`, `C:\x\y.ts:10:5` etc. in any output become links. Opens in
+-- $EDITOR, else the first of code / cursor / nvim / hx / micro on PATH, else a
+-- read-only bat view in a new tab scrolled to the line (q to close).
+-- Known quirk: `host.com:8080` also looks like file:line (gives "not found").
+config.hyperlink_rules = wezterm.default_hyperlink_rules()
+table.insert(config.hyperlink_rules, {
+  regex = [[\b(?:[A-Za-z]:[\\/])?[\w.\-\\/]*\w\.[A-Za-z][A-Za-z0-9]{0,5}:\d+(?::\d+)?\b]],
+  format = "editfile:$0",
+})
+
+local function on_path(exe)
+  local probe = is_windows and { "where.exe", "/q", exe } or { "sh", "-c", "command -v " .. exe }
+  local ok, found = pcall(wezterm.run_child_process, probe)
+  return ok and found
+end
+
+local GIT_LESS = "C:\\Program Files\\Git\\usr\\bin\\less.exe"
+
+wezterm.on("open-uri", function(window, pane, uri)
+  local target = uri:match("^editfile:(.*)$")
+  if not target then return end  -- a normal URL: let WezTerm open it
+  target = target:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)
+  local path, line = target:match("^(.-):(%d+)")
+  if not path then return false end
+  if is_windows then path = path:gsub("/", "\\") end
+  local absolute = path:match("^%a:[\\/]") or path:match("^[\\/]") or path:match("^~")
+  if not absolute then
+    local cwd = pane_cwd(pane)
+    if cwd then path = cwd:gsub("[\\/]$", "") .. SEP .. path end
+  end
+  path = path:gsub("^~", wezterm.home_dir)
+  local f = io.open(path, "r")
+  if not f then
+    window:toast_notification("WezTerm", "File not found: " .. path, nil, 3000)
+    return false
+  end
+  f:close()
+
+  local function term_tab(args) window:perform_action(act.SpawnCommandInNewTab({ args = args }), pane) end
+  local function gui(cmd, ...)
+    local args = is_windows and { "cmd.exe", "/c", cmd, ... } or { cmd, ... }
+    wezterm.background_child_process(args)
+  end
+
+  local editor = os.getenv("EDITOR")
+  if editor and editor ~= "" then
+    if editor:match("code") or editor:match("cursor") then gui(editor, "-g", path .. ":" .. line)
+    else term_tab({ editor, "+" .. line, path }) end
+  elseif on_path("code")   then gui("code", "-g", path .. ":" .. line)
+  elseif on_path("cursor") then gui("cursor", "-g", path .. ":" .. line)
+  elseif on_path("nvim")   then term_tab({ "nvim", "+" .. line, path })
+  elseif on_path("hx")     then term_tab({ "hx", path .. ":" .. line })
+  elseif on_path("micro")  then term_tab({ "micro", path .. ":" .. line })
+  elseif is_windows then
+    local q = "'" .. path:gsub("'", "''") .. "'"
+    local view
+    local lf = io.open(GIT_LESS, "r")
+    if lf then
+      lf:close()
+      view = "bat --style=numbers --color=always --highlight-line " .. line .. " " .. q
+          .. " | & '" .. GIT_LESS .. "' -R -j.3 +" .. line .. "g"
+    else
+      view = "bat --paging=always --style=numbers --highlight-line " .. line .. " " .. q
+    end
+    term_tab({ "pwsh.exe", "-NoLogo", "-NoProfile", "-Command", view })
+  else
+    local q = "'" .. path:gsub("'", "'\\''") .. "'"
+    term_tab({ "sh", "-c", "$(command -v bat || command -v batcat) --style=numbers --color=always"
+      .. " --highlight-line " .. line .. " " .. q .. " | less -R -j.3 +" .. line .. "g" })
+  end
+  return false
+end)
+
 return config

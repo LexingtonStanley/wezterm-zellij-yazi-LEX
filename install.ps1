@@ -176,6 +176,9 @@ if (-not $SkipTools) {
       yazi      = "sxyazi.yazi"
       lazygit   = "JesseDuffield.lazygit"
       delta     = "dandavison.delta"
+      atuin     = "Atuinsh.Atuin"        # Ctrl-r history search
+      carapace  = "rsteube.Carapace"     # tab-completion for most CLIs
+      tldr      = "dbrgn.tealdeer"       # `tldr <cmd>` usage examples
       fastfetch = "Fastfetch-cli.Fastfetch"
       tailscale = "tailscale.tailscale"
     }
@@ -192,6 +195,15 @@ if (-not $SkipTools) {
     if (-not (Get-Module -ListAvailable -Name PSFzf)) {
       try { Install-Module PSFzf -Scope CurrentUser -Force -ErrorAction Stop; Ok "PSFzf module installed" }
       catch { Warn "PSFzf module skipped (optional)" }
+    }
+    # CompletionPredictor: suggestions from tab-completion, not just history (PS 7).
+    if ($PSVersionTable.PSVersion.Major -ge 7 -and -not (Get-Module -ListAvailable -Name CompletionPredictor)) {
+      try { Install-Module CompletionPredictor -Scope CurrentUser -Force -ErrorAction Stop; Ok "CompletionPredictor module installed" }
+      catch { Warn "CompletionPredictor module skipped (optional)" }
+    }
+    # Pull existing PowerShell history into atuin once, so Ctrl-r isn't empty.
+    if ((Have atuin) -and -not (Test-Path (Join-Path $env:USERPROFILE ".atuin\data\history.db"))) {
+      try { atuin import powershell | Out-Null; Ok "imported PowerShell history into atuin" } catch {}
     }
     if (-not (Have claude)) {
       Warn "claude (Claude Code) not on PATH - install it with:  irm https://claude.ai/install.ps1 | iex"
